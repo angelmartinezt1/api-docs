@@ -3,15 +3,22 @@
   "version": "1.0.0",
   "description": "API documentation project with Express backend and vanilla JS frontends",
   "main": "server/index.js",
+  "type": "module",
   "engines": {
     "node": ">=20.0.0"
   },
   "scripts": {
     "start": "node server/index.js",
-    "dev": "nodemon server/index.js"
+    "dev": "nodemon server/index.js",
+    "migrate": "node server/migrations/run.js",
+    "seed": "node server/migrations/seed.js"
   },
   "dependencies": {
-    "express": "^4.18.0"
+    "express": "^5.0.0",
+    "multer": "^2.0.0",
+    "sqlite3": "^5.1.0",
+    "ulid": "^2.3.0",
+    "cors": "^2.8.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"

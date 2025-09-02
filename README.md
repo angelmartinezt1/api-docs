@@ -1,24 +1,73 @@
-# API Documentation Project
+# API Documentation System
 
-Node.js project with Express backend and vanilla JavaScript frontends.
+Internal microservices documentation system for enterprise SaaS development teams.
 
-## Structure
+## Requirements
 
-```
-/server          - Express backend
-  /migrations    - Database migration files
-  /routes        - API route handlers
-  /storage/specs - API specification storage
-  db.js          - Database connection
-  index.js       - Server entry point
-/public-admin    - Admin panel frontend (vanilla JS)
-/public-front    - Public frontend (vanilla JS)
-```
+- Node.js 20+
+- SQLite (included)
 
-## Setup
+## Installation
 
 ```bash
+git clone <repo>
+cd api-docs
 npm install
-npm run dev  # Development with nodemon
-npm start    # Production
 ```
+
+## Database Setup
+
+```bash
+# Run migrations
+npm run migrate
+
+# Add sample data (optional)
+npm run seed
+```
+
+## Running
+
+```bash
+# Development
+npm run dev
+
+# Production
+npm start
+```
+
+## Access
+
+- **Admin Panel**: `http://localhost:3000/admin`
+- **Public Catalog**: `http://localhost:3000`
+- **API**: `http://localhost:3000/api`
+
+## API Endpoints
+
+### Microservices
+- `GET /api/microservices` - List all (filters: q, api_type, status, tags)
+- `POST /api/microservices` - Create + upload JSON spec
+- `GET /api/microservices/:id` - Get details
+- `PUT /api/microservices/:id` - Update metadata
+- `PUT /api/microservices/:id/spec` - Replace JSON spec
+- `DELETE /api/microservices/:id` - Deprecate service
+
+### Files
+- `GET /specs/:filename` - Download JSON specification
+- `GET /health` - System health check
+
+## Response Format
+
+```json
+{
+  "ok": true,
+  "message": "Success message",
+  "data": {}
+}
+```
+
+## API Types
+
+- **Admin** - Administrative services
+- **Portal** - User-facing portal APIs  
+- **Webhook** - Webhook endpoints
+- **Integraciones** - Third-party integrations

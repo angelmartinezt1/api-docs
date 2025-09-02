@@ -1,161 +1,108 @@
-1) Modelo y validaciones (SQLite)
+Aquí tienes una **descripción completa del proyecto**, redactada como contexto para que cualquier IA de código (Claude Code, GitHub Copilot, Cursor, etc.) entienda lo que se necesita construir:
 
-Tabla microservices (campos mínimos)
+---
 
-id (ulid/uuid string)
+## 📌 Descripción del Proyecto: Minisistema de Documentación Interno
 
-name (único, requerido, 3–60 chars)
+Estamos construyendo un **minisistema interno de documentación de microservicios** para un SaaS de clase empresarial (competencia de Shopify). El sistema será usado **exclusivamente por el equipo de desarrollo**, por lo que no tendrá autenticación en su primera versión (acceso solo en red interna).
 
-description (requerido, 20–400 chars)
+### 🎯 Objetivo
 
-owner_dev_name (requerido)
+Permitir que cada desarrollador registre la documentación de su microservicio en un **backoffice sencillo** (admin), subiendo un archivo JSON con la especificación de su API y completando algunos metadatos. En el **frontoffice (lectura)**, el equipo podrá explorar un catálogo navegable de todos los microservicios y acceder al archivo JSON para que otro sistema interno (ya existente) lo renderice como documentación completa.
 
-api_type (uno de: Admin|Portal|Webhook|Integraciones)
+### 🏗️ Arquitectura
 
-version (semver opcional, p.ej. 1.0.0)
+* **Backend:** Node.js 20 con Express.
+* **Frontend:** Vanilla JS + HTML/CSS (sin frameworks ni Next.js).
+* **Base de datos:** SQLite (archivo local `data/docs.db`).
+* **Almacenamiento de JSON:** Carpeta local `/server/storage/specs/` servida como estática.
+* **Modo de ejecución:** proyecto monorepo simple con carpetas separadas para `/server`, `/public-admin`, `/public-front`.
 
-status (draft|active|deprecated) — default active
+### 📂 Estructura del Proyecto
 
-spec_filename (requerido; solo .json)
+```
+/server
+  /migrations         → scripts SQL de migraciones
+  /routes             → routers de Express
+  /storage/specs      → JSONs de documentación
+  db.js               → conexión a SQLite
+  index.js            → servidor Express
+/public-admin         → front de administración
+/public-front         → front de lectura
+.gitignore
+README.md
+package.json
+```
 
-tags (opcional, csv: p0,external-facing)
+### 📑 Modelo de datos (tabla `microservices`)
 
-created_at, updated_at (timestamps)
+* `id` (ulid/uuid string, PK)
+* `name` (único, requerido)
+* `description` (requerido)
+* `owner_dev_name` (desarrollador responsable)
+* `api_type` (catálogo fijo: **Admin, Portal, Webhook, Integraciones**)
+* `version` (ej. `1.0.0`)
+* `status` (enum: `draft`, `active`, `deprecated`, default `active`)
+* `spec_filename` (nombre del archivo JSON en `/storage/specs/`)
+* `tags` (string separada por comas)
+* `created_at`, `updated_at` (timestamps ISO)
 
-Reglas clave
+Restricciones:
 
-name único.
+* `CHECK(api_type IN ('Admin','Portal','Webhook','Integraciones'))`
+* `CHECK(status IN ('draft','active','deprecated'))`
 
-api_type CHECK en SQLite: CHECK(api_type IN ('Admin','Portal','Webhook','Integraciones'))
+### 📂 Convención de nombres de archivos JSON
 
-status CHECK: CHECK(status IN ('draft','active','deprecated'))
+Cada archivo debe seguir el formato:
 
-Validar que el archivo subido sea JSON parseable y ≤ 5 MB.
+```
+{api_type}-{service}-{version}-{YYYYMMDD}.json
+```
 
-spec_filename sigue convención (ver §4).
+Ejemplo:
+`Admin-orders-1.0.0-20250902.json`
 
-2) Catálogo de secciones (fijo)
+### 🖥️ Backoffice (Admin)
 
-Admin (backoffice merchant)
+* Listado de microservicios con filtros (`q`, `api_type`, `status`, `tags`).
+* Crear microservicio:
 
-Portal (tienda pública)
+  * Campos: nombre, descripción, responsable, tipo de API, versión, estado, tags.
+  * Subida de archivo JSON (validado con `JSON.parse`, máx 5 MB).
+* Editar metadatos.
+* Reemplazar JSON (mismo filename si no cambia la versión).
+* Deprecar servicio (cambia `status=deprecated`).
+* Vista previa: link al JSON servido.
 
-Webhook (eventos salientes/entrantes)
+### 📖 Frontoffice (Lectura)
 
-Integraciones (partners/externos, ERP, pasarelas, etc.)
+* Menú lateral con las 4 secciones: **Admin | Portal | Webhook | Integraciones**.
+* Grid de tarjetas por microservicio:
 
-3) Flujo Backoffice (sin auth)
+  * Nombre, descripción, responsable, versión, estado (badge).
+* Botón “Ver documentación”: abre el JSON desde `/specs/{spec_filename}` (otro sistema lo renderiza).
+* Ordenamiento: `status` activo primero, luego `name` ascendente.
 
-Listado con filtros: texto libre, api_type (4 opciones), status, tags.
+### 📡 Endpoints principales (MVP)
 
-Crear: completar formulario (abajo) + subir JSON → validar → guardar a /storage/specs/ + insert en DB.
+* `GET /api/microservices` (listar + filtros)
+* `GET /api/microservices/:id`
+* `POST /api/microservices` (crear + subir JSON)
+* `PUT /api/microservices/:id` (editar metadatos)
+* `PUT /api/microservices/:id/spec` (reemplazar JSON)
+* `DELETE /api/microservices/:id` (soft delete → deprecated)
+* `GET /specs/:filename` (archivos JSON)
+* `GET /health` (status de DB y carpeta specs)
 
-Editar: metadatos y/o reemplazo de JSON (mismo filename si misma versión).
+### ✅ Criterios de Aceptación del MVP
 
-Cambios de estado: deprecated con motivo breve en description o tags.
+1. Catálogo fijo de `api_type` (Admin, Portal, Webhook, Integraciones).
+2. CRUD funcional con validaciones estrictas.
+3. Subida de JSON válida (si falla parseo → error 400 + borrar archivo).
+4. Admin sin auth, accesible solo en red interna.
+5. Front de lectura con navegación por secciones y botón “Ver doc”.
+6. Respuestas uniformes: `{ ok, message, data }`.
+7. Scripts de NPM: `dev`, `start`, `migrate`, `seed`.
 
-Vista previa: botón que abre tu renderizador con URL /specs/{spec_filename}.
 
-4) Convención de nombres para JSON
-
-Formato: {api_type}-{service}-{version}-{YYYYMMDD}.json
-
-Ejemplos:
-
-Admin-orders-1.0.0-20250902.json
-
-Webhook-payments-1.2.1-20250910.json
-
-Reemplazo sin cambio de versión: mismo spec_filename.
-
-Cambio de versión: nuevo spec_filename (histórico por archivos).
-
-5) Flujo Front (lectura)
-
-Home: menú lateral con las 4 secciones fijas.
-
-Lista: tarjetas ordenadas por status (active primero) y name.
-
-Detalle: metadatos + botón “Abrir documentación” (usa spec_filename).
-
-6) Endpoints mínimos (ideas)
-
-GET /api/microservices?q=&api_type=&status=&tags=
-
-GET /api/microservices/:id
-
-POST /api/microservices (metadata + upload JSON)
-
-PUT /api/microservices/:id (metadata)
-
-PUT /api/microservices/:id/spec (reemplazo JSON)
-
-DELETE /api/microservices/:id (soft: status=deprecated)
-
-Estáticos: GET /specs/:filename (sirve /storage/specs/)
-
-7) Plantilla de formulario (ADMIN – copiar tal cual)
-
-Nombre del microservicio (input text, único)
-
-Descripción corta (140–200 caracteres) (textarea)
-
-Responsable / Developer owner (input text)
-
-Tipo de API (select: Admin | Portal | Webhook | Integraciones)
-
-Versión (semver) (input text, ej. 1.0.0)
-
-Estado (radio: draft | active | deprecated, default active)
-
-Tags (coma separadas) (input text, placeholder: p0,external-facing,beta)
-
-Archivo JSON de especificación (dropzone/input file, acepta .json)
-
-Botones: Guardar | Cancelar
-
-Mensajes UX:
-
-Éxito: “Microservicio creado/actualizado.”
-
-Error parseo JSON: “No se pudo parsear el JSON (línea X, columna Y).”
-
-Duplicado: “Ya existe un microservicio con ese nombre.”
-
-8) Plantilla de tarjeta (FRONT – copiar tal cual)
-
-Header: name · Badge api_type
-
-Body:
-
-description (trunc 2–3 líneas)
-
-Línea meta: owner_dev_name · version · status
-
-Footer:
-
-Botón Abrir documentación (link a /specs/{spec_filename})
-
-Chips de tags (opcionales)
-
-9) Filtros recomendados (FRONT)
-
-Sección (tabs o sidebar): Admin | Portal | Webhook | Integraciones
-
-Buscar: por name, description, tags, owner_dev_name
-
-Estado: checkboxes active, draft, deprecated
-
-Ordenar: name (A→Z), updated_at (recientes)
-
-10) “Hecho” del MVP
-
- CHECK en SQLite para api_type y status.
-
- Validación de JSON al subir (parse + tamaño).
-
- Listado con filtros por api_type (4 fijos).
-
- Vista detalle + link al spec_filename.
-
- Carpeta /storage/specs/ servida como estática.

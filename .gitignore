@@ -40,6 +40,11 @@ Thumbs.db
 dist/
 build/
 
-# Database
+# Database and data
+data/
 *.sqlite
 *.db
+
+# API specs (but keep the folder)
+server/storage/specs/*
+!server/storage/specs/.gitkeep
