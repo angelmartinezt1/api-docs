@@ -1,0 +1,803 @@
+{
+  "info": {
+    "title": "API Orders T1",
+    "version": "v2.0",
+    "description": "La API de gestión de ordenes proporciona un manejo integral del ciclo de vida de ordenes para múltiples canales de venta."
+  },
+  "servers": [
+    {
+      "url": "https://ordershub.dev.t1api.com",
+      "description": "Servidor de producción"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token de acceso T1"
+      }
+    }
+  ],
+  "paths": {
+    "/admin/api/orders": {
+      "post": {
+        "summary": "Crear Orden",
+        "description": "Crea una nueva orden con productos, información del cliente y configuración de envío.",
+        "tags": ["Órdenes"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["store_id", "line_items"],
+                "properties": {
+                  "store_id": {
+                    "type": "string",
+                    "description": "Identificador único de la tienda donde se crea la orden"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "description": "Código de moneda ISO (por defecto: 'MXN')",
+                    "default": "MXN"
+                  },
+                  "source_name": {
+                    "type": "string",
+                    "description": "Canal de origen: web, pos, mobile, phone, marketplace",
+                    "enum": ["web", "pos", "mobile", "phone", "marketplace"],
+                    "default": "web"
+                  },
+                  "customer": {
+                    "type": "object",
+                    "properties": {
+                      "email": {
+                        "type": "string",
+                        "description": "Email del cliente"
+                      },
+                      "first_name": {
+                        "type": "string",
+                        "description": "Nombre del cliente"
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "description": "Apellido del cliente"
+                      },
+                      "phone": {
+                        "type": "string",
+                        "description": "Teléfono del cliente"
+                      }
+                    }
+                  },
+                  "line_items": {
+                    "type": "array",
+                    "description": "Lista de productos/líneas de la orden",
+                    "items": {
+                      "type": "object",
+                      "required": ["title", "variant_id", "quantity", "price"],
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "description": "Nombre del producto"
+                        },
+                        "variant_id": {
+                          "type": "string",
+                          "description": "ID de la variante específica del producto"
+                        },
+                        "quantity": {
+                          "type": "number",
+                          "description": "Cantidad del producto"
+                        },
+                        "price": {
+                          "type": "string",
+                          "description": "Precio unitario del producto"
+                        },
+                        "sku": {
+                          "type": "string",
+                          "description": "Código SKU del producto"
+                        },
+                        "requires_shipping": {
+                          "type": "boolean",
+                          "description": "Si el producto requiere envío"
+                        }
+                      }
+                    }
+                  },
+                  "billing_address": {
+                    "type": "object",
+                    "description": "Dirección de facturación",
+                    "properties": {
+                      "first_name": {
+                        "type": "string",
+                        "description": "Nombre en la dirección"
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "description": "Apellido en la dirección"
+                      },
+                      "address1": {
+                        "type": "string",
+                        "description": "Dirección principal"
+                      },
+                      "city": {
+                        "type": "string",
+                        "description": "Ciudad"
+                      },
+                      "province": {
+                        "type": "string",
+                        "description": "Estado o provincia"
+                      },
+                      "zip": {
+                        "type": "string",
+                        "description": "Código postal"
+                      },
+                      "phone": {
+                        "type": "string",
+                        "description": "Teléfono de contacto"
+                      }
+                    }
+                  },
+                  "shipping_address": {
+                    "type": "object",
+                    "description": "Dirección de envío (para e-commerce)",
+                    "properties": {
+                      "first_name": {
+                        "type": "string",
+                        "description": "Nombre en la dirección"
+                      },
+                      "last_name": {
+                        "type": "string",
+                        "description": "Apellido en la dirección"
+                      },
+                      "address1": {
+                        "type": "string",
+                        "description": "Dirección principal"
+                      },
+                      "city": {
+                        "type": "string",
+                        "description": "Ciudad"
+                      },
+                      "province": {
+                        "type": "string",
+                        "description": "Estado o provincia"
+                      },
+                      "zip": {
+                        "type": "string",
+                        "description": "Código postal"
+                      },
+                      "phone": {
+                        "type": "string",
+                        "description": "Teléfono de contacto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Orden creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Order created successfully"
+                        },
+                        "order_id": {
+                          "type": "string",
+                          "example": "POS_01K1Y622Q23X9DECR2MV806P55_12028"
+                        },
+                        "order_number": {
+                          "type": "number",
+                          "example": 1037
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order_management": {
+      "get": {
+        "summary": "Listar Órdenes",
+        "description": "Lista pedidos con filtros avanzados. Soporta búsqueda, filtrado por estado, paginación y ordenamiento.",
+        "tags": ["Órdenes"],
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Identificador único de la tienda para filtrado multi-tienda"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["all", "unprepared", "unpaid", "open", "archived", "preparing", "prepared", "fulfilled", "delivered"]
+            },
+            "description": "Filtro por estado"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Búsqueda por número de orden, email del cliente o nombre"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1
+            },
+            "description": "Número de página para paginación"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 50,
+              "maximum": 250
+            },
+            "description": "Número de órdenes por página"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de órdenes recuperada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string"
+                          },
+                          "orderid": {
+                            "type": "string"
+                          },
+                          "marketplace": {
+                            "type": "string"
+                          },
+                          "orderStatus": {
+                            "type": "object",
+                            "properties": {
+                              "current": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "total_records": {
+                          "type": "number"
+                        },
+                        "page": {
+                          "type": "number"
+                        },
+                        "page_size": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Actualizar Orden",
+        "description": "Actualiza diversos aspectos de una orden según la opción especificada",
+        "tags": ["Órdenes"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["option", "order_id", "marketplace", "seller_id"],
+                "properties": {
+                  "option": {
+                    "type": "string",
+                    "enum": [
+                      "update_status",
+                      "delivery_tracking", 
+                      "client_data",
+                      "shipping_address",
+                      "process_shipping_label",
+                      "prepare_shipping",
+                      "cancel_shipping",
+                      "process_return_action",
+                      "add_note",
+                      "add_tag",
+                      "send_notification"
+                    ],
+                    "description": "Tipo de operación a realizar"
+                  },
+                  "order_id": {
+                    "type": "string",
+                    "description": "ID único de la orden"
+                  },
+                  "marketplace": {
+                    "type": "string",
+                    "description": "Código del marketplace"
+                  },
+                  "seller_id": {
+                    "type": "number",
+                    "description": "ID del vendedor"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Orden actualizada exitosamente"
+          }
+        }
+      }
+    },
+    "/order_management/{order_id}": {
+      "get": {
+        "summary": "Obtener Detalle de Orden",
+        "description": "Obtiene los detalles completos de una orden específica incluyendo líneas de productos, información del cliente e historial de eventos.",
+        "tags": ["Órdenes"],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Identificador único de la orden a consultar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle de la orden recuperado exitosamente"
+          }
+        }
+      }
+    },
+    "/order_management/export_orders": {
+      "get": {
+        "summary": "Exportar Órdenes",
+        "description": "Versión mejorada del endpoint de exportación con funcionalidades adicionales y mejor rendimiento.",
+        "tags": ["Exportación"],
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            },
+            "description": "ID del vendedor para filtrar órdenes"
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Fecha de inicio para el rango de exportación (YYYY-MM-DD)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Fecha de fin para el rango de exportación (YYYY-MM-DD)"
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["csv", "xlsx"],
+              "default": "csv"
+            },
+            "description": "Formato de salida del archivo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo de exportación generado exitosamente"
+          }
+        }
+      }
+    },
+    "/order_management/tags": {
+      "get": {
+        "summary": "Obtener Tags",
+        "description": "Obtiene la lista de todas las etiquetas (tags) únicas utilizadas en las órdenes de un vendedor específico.",
+        "tags": ["Tags"],
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            },
+            "description": "ID del vendedor para obtener las etiquetas de sus órdenes"
+          },
+          {
+            "name": "marketplace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filtrar etiquetas por marketplace específico"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de tags recuperada exitosamente"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remover Tags",
+        "description": "Remueve etiquetas (tags) específicas de una orden.",
+        "tags": ["Tags"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["order_id", "marketplace", "seller_id", "tags"],
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "ID único de la orden"
+                  },
+                  "marketplace": {
+                    "type": "string",
+                    "description": "Código del marketplace"
+                  },
+                  "seller_id": {
+                    "type": "number",
+                    "description": "ID del vendedor"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Array de etiquetas a remover"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tags removidos exitosamente"
+          }
+        }
+      }
+    },
+    "/order_management/grid_configurations": {
+      "post": {
+        "summary": "Crear Configuración de Grid",
+        "description": "Crea una nueva configuración personalizada para la visualización del grid de órdenes.",
+        "tags": ["Configuración"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["seller_id", "config_id", "grid_type", "columns"],
+                "properties": {
+                  "seller_id": {
+                    "type": "number",
+                    "description": "ID del vendedor"
+                  },
+                  "config_id": {
+                    "type": "string",
+                    "description": "Identificador único de la configuración"
+                  },
+                  "grid_type": {
+                    "type": "string",
+                    "enum": ["orders", "products", "customers", "reports"],
+                    "description": "Tipo de grid"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "description": "Array de objetos que definen las columnas del grid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Configuración creada exitosamente"
+          }
+        }
+      },
+      "get": {
+        "summary": "Obtener Configuración de Grid",
+        "description": "Obtiene la configuración de grid existente para un vendedor específico.",
+        "tags": ["Configuración"],
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            },
+            "description": "ID del vendedor"
+          },
+          {
+            "name": "config_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "orders_grid_default"
+            },
+            "description": "Identificador de la configuración específica"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuración recuperada exitosamente"
+          }
+        }
+      },
+      "put": {
+        "summary": "Modificar Configuración de Grid",
+        "description": "Modifica una configuración de grid existente para un vendedor específico.",
+        "tags": ["Configuración"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["seller_id", "config_id"],
+                "properties": {
+                  "seller_id": {
+                    "type": "number",
+                    "description": "ID del vendedor"
+                  },
+                  "config_id": {
+                    "type": "string",
+                    "description": "Identificador único de la configuración a modificar"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "description": "Nueva configuración de columnas"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuración actualizada exitosamente"
+          }
+        }
+      }
+    },
+    "/order_management/comments": {
+      "post": {
+        "summary": "Agregar Comentario",
+        "description": "Crea un nuevo comentario asociado a una orden específica.",
+        "tags": ["Comentarios"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["order_id", "seller_id", "marketplace", "author_id", "author_name", "content"],
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "ID único de la orden"
+                  },
+                  "seller_id": {
+                    "type": "string",
+                    "description": "ID del vendedor"
+                  },
+                  "marketplace": {
+                    "type": "string",
+                    "description": "Código del marketplace"
+                  },
+                  "author_id": {
+                    "type": "string",
+                    "description": "ID del usuario que crea el comentario"
+                  },
+                  "author_name": {
+                    "type": "string",
+                    "description": "Nombre del usuario que crea el comentario"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Contenido del comentario"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["general", "internal", "customer", "support"],
+                    "default": "general",
+                    "description": "Tipo de comentario"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comentario creado exitosamente"
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar Comentarios",
+        "description": "Obtiene la lista de comentarios asociados a una orden específica.",
+        "tags": ["Comentarios"],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID único de la orden"
+          },
+          {
+            "name": "seller_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID del vendedor"
+          },
+          {
+            "name": "marketplace",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Código del marketplace"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de comentarios recuperada exitosamente"
+          }
+        }
+      },
+      "put": {
+        "summary": "Actualizar Comentario",
+        "description": "Modifica el contenido y propiedades de un comentario existente.",
+        "tags": ["Comentarios"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["comment_id", "content", "author_id"],
+                "properties": {
+                  "comment_id": {
+                    "type": "string",
+                    "description": "ID único del comentario a actualizar"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Nuevo contenido del comentario"
+                  },
+                  "author_id": {
+                    "type": "string",
+                    "description": "ID del usuario que realiza la modificación"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comentario actualizado exitosamente"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Eliminar Comentario",
+        "description": "Elimina un comentario específico de una orden.",
+        "tags": ["Comentarios"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["comment_id", "order_id", "seller_id", "user_id"],
+                "properties": {
+                  "comment_id": {
+                    "type": "string",
+                    "description": "ID único del comentario a eliminar"
+                  },
+                  "order_id": {
+                    "type": "string",
+                    "description": "ID de la orden"
+                  },
+                  "seller_id": {
+                    "type": "number",
+                    "description": "ID del vendedor"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "description": "ID del usuario que elimina el comentario"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comentario eliminado exitosamente"
+          }
+        }
+      }
+    }
+  }
+}
