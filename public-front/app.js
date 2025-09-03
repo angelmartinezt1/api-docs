@@ -287,7 +287,7 @@ function createServiceCard(service) {
                     <span>${capitalizeFirst(service.status)}</span>
                 </div>
                 <a 
-                    href="/specs/${service.spec_filename}" 
+                    href="/docs/index.html?spec=/specs/${service.spec_filename}" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     class="view-docs-btn"

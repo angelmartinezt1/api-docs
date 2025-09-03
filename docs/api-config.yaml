@@ -1,0 +1,1342 @@
+info:
+  title: "API Orders T1"
+  version: "v2.0"
+  description: "La API de gestión de ordenes proporciona un manejo integral del ciclo de vida de ordenes para múltiples canales de venta."
+
+servers:
+  - url: "https://ordershub.dev.t1api.com"
+    description: "Servidor de producción"
+
+security:
+  - bearerAuth:
+      type: "http"
+      scheme: "bearer"
+      description: "Token de acceso T1"
+
+paths:
+  /admin/api/orders:
+    post:
+      summary: "Crear Orden"
+      description: "Crea una nueva orden con productos, información del cliente y configuración de envío."
+      tags: ["Órdenes"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["store_id", "line_items"]
+              properties:
+                store_id:
+                  type: string
+                  description: "Identificador único de la tienda donde se crea la orden"
+                currency:
+                  type: string
+                  description: "Código de moneda ISO (por defecto: 'MXN')"
+                  default: "MXN"
+                source_name:
+                  type: string
+                  description: "Canal de origen: web, pos, mobile, phone, marketplace"
+                  enum: ["web", "pos", "mobile", "phone", "marketplace"]
+                  default: "web"
+                customer:
+                  type: object
+                  properties:
+                    email:
+                      type: string
+                      description: "Email del cliente"
+                    first_name:
+                      type: string
+                      description: "Nombre del cliente"
+                    last_name:
+                      type: string
+                      description: "Apellido del cliente"
+                    phone:
+                      type: string
+                      description: "Teléfono del cliente"
+                line_items:
+                  type: array
+                  description: "Lista de productos/líneas de la orden"
+                  items:
+                    type: object
+                    required: ["title", "variant_id", "quantity", "price"]
+                    properties:
+                      title:
+                        type: string
+                        description: "Nombre del producto"
+                      variant_id:
+                        type: string
+                        description: "ID de la variante específica del producto"
+                      quantity:
+                        type: number
+                        description: "Cantidad del producto"
+                      price:
+                        type: string
+                        description: "Precio unitario del producto"
+                      sku:
+                        type: string
+                        description: "Código SKU del producto"
+                      requires_shipping:
+                        type: boolean
+                        description: "Si el producto requiere envío"
+      responses:
+        "201":
+          description: "Orden creada exitosamente"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "Order created successfully"
+                      order_id:
+                        type: string
+                        example: "POS_01K1Y622Q23X9DECR2MV806P55_12028"
+                      order_number:
+                        type: number
+                        example: 1037
+
+  /order_management:
+    get:
+      summary: "Listar Órdenes"
+      description: "Lista pedidos con filtros avanzados. Soporta búsqueda, filtrado por estado, paginación y ordenamiento."
+      tags: ["Órdenes"]
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Identificador único de la tienda para filtrado multi-tienda"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["all", "unprepared", "unpaid", "open", "archived", "preparing", "prepared", "fulfilled", "delivered"]
+          description: "Filtro por estado"
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Búsqueda por número de orden, email del cliente o nombre"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: number
+            default: 1
+          description: "Número de página para paginación"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+            default: 50
+            maximum: 250
+          description: "Número de órdenes por página"
+      responses:
+        "200":
+          description: "Tags removidos exitosamente"
+
+  /order_management/grid_configurations:
+    post:
+      summary: "Crear Configuración de Grid"
+      description: "Crea una nueva configuración personalizada para la visualización del grid de órdenes."
+      tags: ["Configuración"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["seller_id", "config_id", "grid_type", "columns"]
+              properties:
+                seller_id:
+                  type: number
+                  description: "ID del vendedor"
+                config_id:
+                  type: string
+                  description: "Identificador único de la configuración"
+                grid_type:
+                  type: string
+                  enum: ["orders", "products", "customers", "reports"]
+                  description: "Tipo de grid"
+                columns:
+                  type: array
+                  description: "Array de objetos que definen las columnas del grid"
+      responses:
+        "201":
+          description: "Configuración creada exitosamente"
+
+    get:
+      summary: "Obtener Configuración de Grid"
+      description: "Obtiene la configuración de grid existente para un vendedor específico."
+      tags: ["Configuración"]
+      parameters:
+        - name: seller_id
+          in: query
+          required: true
+          schema:
+            type: number
+          description: "ID del vendedor"
+        - name: config_id
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "orders_grid_default"
+          description: "Identificador de la configuración específica"
+      responses:
+        "200":
+          description: "Configuración recuperada exitosamente"
+
+    put:
+      summary: "Modificar Configuración de Grid"
+      description: "Modifica una configuración de grid existente para un vendedor específico."
+      tags: ["Configuración"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["seller_id", "config_id"]
+              properties:
+                seller_id:
+                  type: number
+                  description: "ID del vendedor"
+                config_id:
+                  type: string
+                  description: "Identificador único de la configuración a modificar"
+                columns:
+                  type: array
+                  description: "Nueva configuración de columnas"
+      responses:
+        "200":
+          description: "Configuración actualizada exitosamente"
+
+  /order_management/comments:
+    post:
+      summary: "Agregar Comentario"
+      description: "Crea un nuevo comentario asociado a una orden específica."
+      tags: ["Comentarios"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["order_id", "seller_id", "marketplace", "author_id", "author_name", "content"]
+              properties:
+                order_id:
+                  type: string
+                  description: "ID único de la orden"
+                seller_id:
+                  type: string
+                  description: "ID del vendedor"
+                marketplace:
+                  type: string
+                  description: "Código del marketplace"
+                author_id:
+                  type: string
+                  description: "ID del usuario que crea el comentario"
+                author_name:
+                  type: string
+                  description: "Nombre del usuario que crea el comentario"
+                content:
+                  type: string
+                  description: "Contenido del comentario"
+                type:
+                  type: string
+                  enum: ["general", "internal", "customer", "support"]
+                  default: "general"
+                  description: "Tipo de comentario"
+      responses:
+        "201":
+          description: "Comentario creado exitosamente"
+
+    get:
+      summary: "Listar Comentarios"
+      description: "Obtiene la lista de comentarios asociados a una orden específica."
+      tags: ["Comentarios"]
+      parameters:
+        - name: order_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "ID único de la orden"
+        - name: seller_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "ID del vendedor"
+        - name: marketplace
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Código del marketplace"
+      responses:
+        "200":
+          description: "Lista de comentarios recuperada exitosamente"
+
+    put:
+      summary: "Actualizar Comentario"
+      description: "Modifica el contenido y propiedades de un comentario existente."
+      tags: ["Comentarios"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["comment_id", "content", "author_id"]
+              properties:
+                comment_id:
+                  type: string
+                  description: "ID único del comentario a actualizar"
+                content:
+                  type: string
+                  description: "Nuevo contenido del comentario"
+                author_id:
+                  type: string
+                  description: "ID del usuario que realiza la modificación"
+      responses:
+        "200":
+          description: "Comentario actualizado exitosamente"
+
+    delete:
+      summary: "Eliminar Comentario"
+      description: "Elimina un comentario específico de una orden."
+      tags: ["Comentarios"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["comment_id", "order_id", "seller_id", "user_id"]
+              properties:
+                comment_id:
+                  type: string
+                  description: "ID único del comentario a eliminar"
+                order_id:
+                  type: string
+                  description: "ID de la orden"
+                seller_id:
+                  type: number
+                  description: "ID del vendedor"
+                user_id:
+                  type: string
+                  description: "ID del usuario que elimina el comentario"
+      responses:
+        "200":
+          description: "Comentario eliminado exitosamente"Lista de órdenes recuperada exitosamente"
+
+    patch:
+      summary: "Actualizar Orden"
+      description: "Actualiza diversos aspectos de una orden según la opción especificada"
+      tags: ["Órdenes"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["option", "order_id", "marketplace", "seller_id"]
+              properties:
+                option:
+                  type: string
+                  enum: [
+                    "update_status",
+                    "delivery_tracking", 
+                    "client_data",
+                    "shipping_address",
+                    "process_shipping_label",
+                    "prepare_shipping",
+                    "cancel_shipping",
+                    "process_return_action",
+                    "add_note",
+                    "add_tag",
+                    "send_notification"
+                  ]
+                  description: "Tipo de operación a realizar"
+                order_id:
+                  type: string
+                  description: "ID único de la orden"
+                marketplace:
+                  type: string
+                  description: "Código del marketplace"
+                seller_id:
+                  type: number
+                  description: "ID del vendedor"
+      responses:
+        "200":
+          description: "Orden actualizada exitosamente"
+
+  "/order_management/{order_id}":
+    get:
+      summary: "Obtener Detalle de Orden"
+      description: "Obtiene los detalles completos de una orden específica incluyendo líneas de productos, información del cliente e historial de eventos."
+      tags: ["Órdenes"]
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Identificador único de la orden a consultar"
+      responses:
+        "200":
+          description: "Detalle de la orden recuperado exitosamente"
+
+  /order_management/export_orders:
+    get:
+      summary: "Exportar Órdenes"
+      description: "Versión mejorada del endpoint de exportación con funcionalidades adicionales y mejor rendimiento."
+      tags: ["Exportación"]
+      parameters:
+        - name: seller_id
+          in: query
+          required: true
+          schema:
+            type: number
+          description: "ID del vendedor para filtrar órdenes"
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: "Fecha de inicio para el rango de exportación (YYYY-MM-DD)"
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: "Fecha de fin para el rango de exportación (YYYY-MM-DD)"
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["csv", "xlsx"]
+            default: "csv"
+          description: "Formato de salida del archivo"
+      responses:
+        "200":
+          description: "Archivo de exportación generado exitosamente"
+
+  /order_management/tags:
+    get:
+      summary: "Obtener Tags"
+      description: "Obtiene la lista de todas las etiquetas (tags) únicas utilizadas en las órdenes de un vendedor específico."
+      tags: ["Tags"]
+      parameters:
+        - name: seller_id
+          in: query
+          required: true
+          schema:
+            type: number
+          description: "ID del vendedor para obtener las etiquetas de sus órdenes"
+        - name: marketplace
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Filtrar etiquetas por marketplace específico"
+      responses:
+        "200":
+          description: "Lista de tags recuperada exitosamente"
+
+    delete:
+      summary: "Remover Tags"
+      description: "Remueve etiquetas (tags) específicas de una orden."
+      tags: ["Tags"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["order_id", "marketplace", "seller_id", "tags"]
+              properties:
+                order_id:
+                  type: string
+                  description: "ID único de la orden"
+                marketplace:
+                  type: string
+                  description: "Código del marketplace"
+                seller_id:
+                  type: number
+                  description: "ID del vendedor"
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: "Array de etiquetas a remover"
+      responses:
+        "200":
+          description: "Tags removidos exitosamente"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "Tags removed successfully"
+                      removed_tags:
+                        type: array
+                        items:
+                          type: string
+                        example: ["urgente", "procesado"]
+                      order_id:
+                        type: string
+                        example: "PEDIDO_123456"
+                  metadata:
+                    $ref: '#/components/schemas/StandardResponse/properties/metadata'
+
+  /order_management/grid_configurations:
+    post:
+      summary: "Crear Configuración de Grid"
+      description: "Crea una nueva configuración personalizada para la visualización del grid de órdenes."
+      tags: ["Configuración"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["seller_id", "config_id", "grid_type", "columns"]
+              properties:
+                seller_id:
+                  type: number
+                  description: "ID del vendedor propietario de la configuración"
+                config_id:
+                  type: string
+                  description: "Identificador único de la configuración"
+                  example: "orders_grid_default"
+                grid_type:
+                  type: string
+                  enum: ["orders", "products", "customers", "reports"]
+                  description: "Tipo de grid"
+                columns:
+                  type: array
+                  description: "Array de objetos que definen las columnas del grid"
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: "ID único de la columna"
+                      name:
+                        type: string
+                        description: "Nombre de la columna"
+                      visible:
+                        type: boolean
+                        description: "Si la columna es visible"
+                      sortable:
+                        type: boolean
+                        description: "Si la columna es ordenable"
+                      width:
+                        type: number
+                        description: "Ancho de la columna en pixeles"
+                version:
+                  type: string
+                  default: "1.0"
+                  description: "Versión de la configuración"
+                user_id:
+                  type: string
+                  description: "ID del usuario específico"
+                is_default:
+                  type: boolean
+                  default: false
+                  description: "Si es la configuración por defecto"
+                name:
+                  type: string
+                  description: "Nombre descriptivo de la configuración"
+                description:
+                  type: string
+                  description: "Descripción detallada del propósito"
+      responses:
+        "201":
+          description: "Configuración creada exitosamente"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+    get:
+      summary: "Obtener Configuración de Grid"
+      description: "Obtiene la configuración de grid existente para un vendedor específico."
+      tags: ["Configuración"]
+      parameters:
+        - name: seller_id
+          in: query
+          required: true
+          schema:
+            type: number
+          description: "ID del vendedor propietario de la configuración"
+        - name: config_id
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "orders_grid_default"
+          description: "Identificador de la configuración específica"
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "ID del usuario específico"
+        - name: grid_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["orders", "products", "customers", "reports"]
+          description: "Filtrar por tipo de grid específico"
+        - name: include_metadata
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: "Incluir metadatos adicionales"
+      responses:
+        "200":
+          description: "Configuración recuperada exitosamente"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+    put:
+      summary: "Modificar Configuración de Grid"
+      description: "Modifica una configuración de grid existente para un vendedor específico."
+      tags: ["Configuración"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["seller_id", "config_id"]
+              properties:
+                seller_id:
+                  type: number
+                  description: "ID del vendedor propietario de la configuración"
+                config_id:
+                  type: string
+                  description: "Identificador único de la configuración a modificar"
+                columns:
+                  type: array
+                  description: "Nueva configuración de columnas"
+                grid_type:
+                  type: string
+                  enum: ["orders", "products", "customers", "reports"]
+                  description: "Tipo de grid"
+                version:
+                  type: string
+                  description: "Nueva versión de la configuración"
+                user_id:
+                  type: string
+                  description: "ID del usuario específico"
+                is_default:
+                  type: boolean
+                  description: "Si esta configuración debe ser la por defecto"
+                name:
+                  type: string
+                  description: "Nuevo nombre descriptivo de la configuración"
+                description:
+                  type: string
+                  description: "Nueva descripción detallada del propósito"
+      responses:
+        "200":
+          description: "Configuración actualizada exitosamente"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /order_management/comments:
+    post:
+      summary: "Agregar Comentario"
+      description: "Crea un nuevo comentario asociado a una orden específica."
+      tags: ["Comentarios"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["order_id", "seller_id", "marketplace", "author_id", "author_name", "content"]
+              properties:
+                order_id:
+                  type: string
+                  description: "ID único de la orden al cual se asociará el comentario"
+                seller_id:
+                  type: string
+                  description: "ID del vendedor propietario de la orden"
+                marketplace:
+                  type: string
+                  description: "Código del marketplace donde se realizó la orden"
+                author_id:
+                  type: string
+                  description: "ID del usuario que crea el comentario"
+                author_name:
+                  type: string
+                  description: "Nombre del usuario que crea el comentario"
+                content:
+                  type: string
+                  description: "Contenido del comentario. No puede estar vacío"
+                type:
+                  type: string
+                  enum: ["general", "internal", "customer", "support"]
+                  default: "general"
+                  description: "Tipo de comentario"
+                visibility:
+                  type: string
+                  enum: ["public", "internal"]
+                  default: "internal"
+                  description: "Nivel de visibilidad"
+                priority:
+                  type: string
+                  enum: ["low", "normal", "high", "urgent"]
+                  default: "normal"
+                  description: "Prioridad del comentario"
+                category:
+                  type: string
+                  enum: ["shipping", "payment", "product", "customer_service", "technical", "other"]
+                  description: "Categoría del comentario"
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: "Etiquetas asociadas al comentario"
+                attachments:
+                  type: array
+                  items:
+                    type: object
+                  description: "Archivos adjuntos al comentario"
+                related_to:
+                  type: string
+                  enum: ["order", "product", "shipping", "payment", "customer"]
+                  description: "Elemento específico al que se relaciona"
+                related_id:
+                  type: string
+                  description: "ID del elemento específico"
+                mention_users:
+                  type: array
+                  items:
+                    type: string
+                  description: "Lista de IDs de usuarios mencionados"
+                notification_enabled:
+                  type: boolean
+                  default: true
+                  description: "Enviar notificación sobre el nuevo comentario"
+      responses:
+        "201":
+          description: "Comentario creado exitosamente"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "Comment created successfully"
+                      comment_id:
+                        type: string
+                        example: "comment_12345"
+                      order_id:
+                        type: string
+                        example: "order_67890"
+                  metadata:
+                    $ref: '#/components/schemas/StandardResponse/properties/metadata'
+
+    get:
+      summary: "Listar Comentarios"
+      description: "Obtiene la lista de comentarios asociados a una orden específica."
+      tags: ["Comentarios"]
+      parameters:
+        - name: order_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "ID único de la orden para obtener sus comentarios"
+        - name: seller_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "ID del vendedor propietario de la orden"
+        - name: marketplace
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Código del marketplace donde se realizó la orden"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: number
+            default: 1
+          description: "Número de página para paginación"
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: number
+            default: 20
+            maximum: 100
+          description: "Número de comentarios por página"
+        - name: visibility
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["internal", "public", "all"]
+            default: "all"
+          description: "Filtrar por visibilidad"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["general", "internal", "customer", "support"]
+          description: "Filtrar por tipo"
+        - name: author_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Filtrar comentarios por autor específico"
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Buscar texto específico en el contenido"
+      responses:
+        "200":
+          description: "Lista de comentarios recuperada exitosamente"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        comment_id:
+                          type: string
+                        content:
+                          type: string
+                        author_name:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        type:
+                          type: string
+                        visibility:
+                          type: string
+                  metadata:
+                    allOf:
+                      - $ref: '#/components/schemas/StandardResponse/properties/metadata'
+                      - type: object
+                        properties:
+                          total_records:
+                            type: number
+                          page:
+                            type: number
+                          page_size:
+                            type: number
+
+    put:
+      summary: "Actualizar Comentario"
+      description: "Modifica el contenido y propiedades de un comentario existente."
+      tags: ["Comentarios"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["comment_id", "content", "author_id"]
+              properties:
+                comment_id:
+                  type: string
+                  description: "ID único del comentario a actualizar"
+                content:
+                  type: string
+                  description: "Nuevo contenido del comentario"
+                author_id:
+                  type: string
+                  description: "ID del usuario que realiza la modificación"
+                visibility:
+                  type: string
+                  enum: ["public", "internal", "private"]
+                  description: "Nueva visibilidad del comentario"
+                type:
+                  type: string
+                  enum: ["general", "internal", "customer", "support"]
+                  description: "Nuevo tipo de comentario"
+                priority:
+                  type: string
+                  enum: ["low", "normal", "high", "urgent"]
+                  description: "Nueva prioridad del comentario"
+                edit_reason:
+                  type: string
+                  enum: ["correction", "clarification", "update", "policy_compliance"]
+                  description: "Razón de la edición"
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: "Nuevas etiquetas para el comentario"
+                notification_enabled:
+                  type: boolean
+                  default: false
+                  description: "Enviar notificación sobre la actualización"
+      responses:
+        "200":
+          description: "Comentario actualizado exitosamente"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+    delete:
+      summary: "Eliminar Comentario"
+      description: "Elimina un comentario específico de una orden mediante su ID único"
+      tags: ["Comentarios"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["comment_id", "order_id", "seller_id", "user_id"]
+              properties:
+                comment_id:
+                  type: string
+                  description: "ID único del comentario que se desea eliminar"
+                order_id:
+                  type: string
+                  description: "ID de la orden al que pertenece el comentario"
+                seller_id:
+                  type: number
+                  description: "ID del vendedor propietario de la orden"
+                user_id:
+                  type: string
+                  description: "ID del usuario que elimina el comentario"
+                soft_delete:
+                  type: boolean
+                  default: true
+                  description: "Si es true, marca como eliminado sin borrar físicamente"
+                reason:
+                  type: string
+                  description: "Razón por la cual se elimina el comentario"
+      responses:
+        "200":
+          description: "Comentario eliminado exitosamente"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+# Definiciones de estados de producto y transiciones válidas
+status_definitions:
+  product_states:
+    - id: "pendiente_pago"
+      name: "Pendiente de Pago"
+      description: "Orden creada esperando confirmación de pago"
+      valid_transitions: ["por_preparar", "cancelado"]
+    
+    - id: "por_preparar"
+      name: "Por Preparar"
+      description: "Pago confirmado, productos pendientes de preparación"
+      valid_transitions: ["por_enviar", "parcialmente_por_enviar", "cancelado"]
+    
+    - id: "parcialmente_por_enviar"
+      name: "Parcialmente Preparado"
+      description: "Algunos productos preparados, otros pendientes"
+      valid_transitions: ["por_enviar", "por_recolectar", "en_transito", "por_preparar", "cancelado"]
+    
+    - id: "por_enviar"
+      name: "Por Enviar"
+      description: "Todos los productos preparados, listos para envío"
+      valid_transitions: ["por_recolectar", "en_transito", "por_preparar", "cancelado"]
+    
+    - id: "por_recolectar"
+      name: "Por Recolectar"
+      description: "Paquete listo para recolección por paquetería"
+      valid_transitions: ["en_transito", "por_enviar", "por_preparar", "cancelado"]
+    
+    - id: "en_transito"
+      name: "En Tránsito"
+      description: "Paquete en camino al cliente"
+      valid_transitions: ["entregado", "devolucion_en_curso", "cancelado"]
+    
+    - id: "enviado"
+      name: "Enviado"
+      description: "Estado legacy, mantener por compatibilidad"
+      valid_transitions: ["entregado", "devolucion_en_curso", "cancelado"]
+    
+    - id: "entregado"
+      name: "Entregado"
+      description: "Productos entregados al cliente"
+      valid_transitions: ["completado", "devolucion_en_curso", "reembolsado"]
+    
+    - id: "completado"
+      name: "Completado"
+      description: "Orden completamente finalizada"
+      valid_transitions: []
+    
+    - id: "cancelado"
+      name: "Cancelado"
+      description: "Orden cancelada"
+      valid_transitions: ["por_preparar"]
+    
+    - id: "devolucion_en_curso"
+      name: "Devolución en Curso"
+      description: "Proceso de devolución iniciado"
+      valid_transitions: ["reembolsado", "parcialmente_reembolsado", "entregado"]
+    
+    - id: "reembolsado"
+      name: "Reembolsado"
+      description: "Reembolso completo procesado"
+      valid_transitions: []
+    
+    - id: "parcialmente_reembolsado"
+      name: "Parcialmente Reembolsado"
+      description: "Reembolso parcial procesado"
+      valid_transitions: ["reembolsado"]
+
+# Configuraciones para las opciones del endpoint PATCH
+patch_options:
+  update_status:
+    description: "Actualizar estado de productos específicos"
+    required_fields: ["option", "order_id", "marketplace", "seller_id", "status", "user_id"]
+    optional_fields: ["product_ids", "notes", "update_order_status", "return_reason"]
+  
+  delivery_tracking:
+    description: "Actualizar información de tracking"
+    required_fields: ["option", "order_id", "marketplace", "seller_id"]
+    optional_fields: ["unique_ids", "guide_number", "delivery_carrier_id", "delivery_carrier_name", "delivery_type", "shipping_type", "tracking_url", "estimated_delivery_date", "tracking_status", "current_location", "delivery_attempts", "notes", "auto_update_status"]
+  
+  client_data:
+    description: "Actualizar datos del cliente"
+    required_fields: ["option", "order_id", "marketplace", "seller_id"]
+    optional_fields: ["contact_email", "contact_phone", "fullname", "first_name", "last_name", "rfc", "date_of_birth", "gender", "customer_id", "customer_type", "alternative_phone", "emergency_contact", "communication_preferences", "marketing_consent", "user_id", "notes"]
+  
+  shipping_address:
+    description: "Actualizar dirección de envío"
+    required_fields: ["option", "order_id", "marketplace", "seller_id"]
+    optional_fields: ["street", "exterior_number", "interior_number", "neighborhood", "borough", "city", "state", "postal_code", "country", "phone", "first_name", "last_name", "reference", "between_streets", "delivery_instructions", "address_type", "user_id", "notes", "validate_address"]
+  
+  add_note:
+    description: "Agregar notas"
+    required_fields: ["option", "order_id", "marketplace", "seller_id", "note", "author"]
+    optional_fields: ["event", "user_id", "priority", "category", "private", "tags", "attachment_urls", "notification_enabled", "related_to", "related_id", "expire_date"]
+  
+  add_tag:
+    description: "Agregar etiquetas"
+    required_fields: ["option", "order_id", "marketplace", "seller_id", "tags"]
+    optional_fields: ["user_id", "category", "color", "expires_at", "auto_remove_conditions", "visibility", "source", "metadata", "notification_enabled", "apply_to_similar_orders", "similarity_criteria"]
+  
+  send_notification:
+    description: "Enviar notificación"
+    required_fields: ["option", "order_id", "seller_id", "notification_type", "recipient_type"]
+    optional_fields: ["channel", "custom_message", "template_id", "schedule_time", "priority", "include_attachments"]
+
+# Componentes reutilizables
+components:
+  schemas:
+    Address:
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: "Nombre"
+        last_name:
+          type: string
+          description: "Apellidos"
+        company:
+          type: string
+          description: "Empresa"
+        address1:
+          type: string
+          description: "Dirección principal"
+        address2:
+          type: string
+          description: "Dirección complementaria"
+        city:
+          type: string
+          description: "Ciudad"
+        province:
+          type: string
+          description: "Estado o provincia"
+        province_code:
+          type: string
+          description: "Código del estado"
+        country:
+          type: string
+          description: "País"
+        country_code:
+          type: string
+          description: "Código del país"
+        zip:
+          type: string
+          description: "Código postal"
+        phone:
+          type: string
+          description: "Teléfono de contacto"
+    
+    Customer:
+      type: object
+      properties:
+        email:
+          type: string
+          description: "Email del cliente"
+        first_name:
+          type: string
+          description: "Nombre del cliente"
+        last_name:
+          type: string
+          description: "Apellido del cliente"
+        phone:
+          type: string
+          description: "Teléfono del cliente"
+        accepts_marketing:
+          type: boolean
+          description: "Si el cliente acepta marketing"
+        verified_email:
+          type: boolean
+          description: "Si el email está verificado"
+        customer_locale:
+          type: string
+          description: "Idioma del cliente"
+        company:
+          type: string
+          description: "Empresa del cliente"
+        tax_exempt:
+          type: boolean
+          description: "Si el cliente está exento de impuestos"
+        note:
+          type: string
+          description: "Notas sobre el cliente"
+        tags:
+          type: string
+          description: "Etiquetas del cliente separadas por comas"
+    
+    LineItem:
+      type: object
+      required: ["title", "variant_id", "quantity", "price"]
+      properties:
+        title:
+          type: string
+          description: "Nombre del producto"
+        variant_title:
+          type: string
+          description: "Título de la variante"
+        sku:
+          type: string
+          description: "Código SKU del producto"
+        vendor:
+          type: string
+          description: "Proveedor o marca del producto"
+        product_id:
+          type: string
+          description: "ID del producto en el catálogo"
+        variant_id:
+          type: string
+          description: "ID de la variante específica del producto"
+        quantity:
+          type: number
+          description: "Cantidad del producto"
+        price:
+          type: string
+          description: "Precio unitario del producto"
+        requires_shipping:
+          type: boolean
+          description: "Si el producto requiere envío"
+        taxable:
+          type: boolean
+          default: true
+          description: "Si el producto está sujeto a impuestos"
+        gift_card:
+          type: boolean
+          default: false
+          description: "Si el producto es una tarjeta de regalo"
+        grams:
+          type: number
+          description: "Peso del producto en gramos"
+        fulfillment_service:
+          type: string
+          enum: ["manual", "automatic"]
+          default: "manual"
+          description: "Servicio de cumplimiento"
+        inventory_management:
+          type: string
+          enum: ["t1", "manual", null]
+          description: "Sistema de manejo de inventario"
+        properties:
+          type: array
+          description: "Propiedades adicionales del producto"
+    
+    StandardResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          description: "Datos de respuesta"
+        metadata:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "success"
+            http_code:
+              type: number
+              example: 200
+            status:
+              type: string
+              example: "ok"
+            date_time:
+              type: string
+              format: date-time
+              example: "2025-08-05T22:36:31.693143Z"
+    
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+              description: "Mensaje de error"
+            code:
+              type: string
+              description: "Código de error"
+            details:
+              type: object
+              description: "Detalles adicionales del error"
+        metadata:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "error"
+            http_code:
+              type: number
+              example: 400
+            status:
+              type: string
+              example: "error"
+            date_time:
+              type: string
+              format: date-time
+
+# Ejemplos de respuesta
+examples:
+  successful_order_creation:
+    summary: "Orden creada exitosamente"
+    value:
+      data:
+        message: "Order created successfully"
+        order_id: "POS_01K1Y622Q23X9DECR2MV806P55_12028"
+        order_ulid: "01K1Y622Q23X9DECR2MV806P55"
+        order_number: 1037
+        order_name: "#1037"
+      metadata:
+        message: "success"
+        http_code: 201
+        status: "ok"
+        date_time: "2025-08-05T22:36:31.693143Z"
+  
+  order_list_response:
+    summary: "Lista de órdenes"
+    value:
+      data:
+        - _id: "25c81b6593cd4b05665c15160b1d9572"
+          orderid: "PEDIDO_ISNARDO_P1"
+          marketplace: "T1"
+          orderType: "marketplace"
+          storeId: "store123"
+          orderStatus:
+            current: "cancelado"
+            history:
+              - status: "por_preparar"
+                timestamp: "2024-10-23T00:03:21Z"
+                notes: "Pago confirmado"
+              - status: "cancelado"
+                timestamp: "2025-06-19T01:25:16.678Z"
+                notes: "Se cancelan productos"
+                userId: "user123"
+          clientData:
+            email: "isluco2004@gmail.com"
+            fullname: "Isnardo Lugardo Cortes"
+            id: "1234"
+          paymentData:
+            total: 499
+            paymentMethod: "credit_card"
+            paymentStatus: "completed"
+          orderedProductsList:
+            - colocationId: "1000001"
+              idProduct: 1696460
+              sellerId: 12028
+              name: "Pijama de franela para bebés"
+              sku: "0000000000"
+              salePrice: 499
+              colocationStatus:
+                id: "cancelado"
+                name: "Cancelado"
+          tags: ["urgente", "regalo", "NuevaTagIsnardo"]
+      metadata:
+        message: "success"
+        http_code: 200
+        status: "ok"
+        total_records: 120
+        page: 1
+        page_size: 1
+        total_pages: 120
+
+  error_response:
+    summary: "Error de validación"
+    value:
+      error:
+        message: "Validation failed"
+        code: "VALIDATION_ERROR"
+        details:
+          field: "order_id"
+          message: "Order ID is required"
+      metadata:
+        message: "error"
+        http_code: 400
+        status: "error"
+        date_time: "2025-08-05T22:36:31.693143Z"

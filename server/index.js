@@ -26,6 +26,7 @@ app.use('/api/microservices', microservicesRouter);
 
 // Serve frontend static files
 app.use('/admin', express.static(join(__dirname, '..', 'public-admin')));
+app.use('/docs', express.static(join(__dirname, '..', 'docs')));
 app.use('/', express.static(join(__dirname, '..', 'public-front')));
 
 /**
