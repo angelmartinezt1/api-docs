@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Documentation - Admin Panel</title>
+    <title>Documentación API - Panel de Administración</title>
     <style>
         * {
             margin: 0;
@@ -447,7 +447,7 @@
 <body>
     <!-- Header -->
     <header class="header">
-        <h1>API Documentation - Admin Panel</h1>
+        <h1>Documentación API - Panel de Administración</h1>
         <p>Manage microservice specifications and documentation</p>
     </header>
 
@@ -456,14 +456,14 @@
         <!-- Filter bar -->
         <div class="filter-bar">
             <div class="filter-group">
-                <label for="search">Search</label>
-                <input type="text" id="search" placeholder="Search by name or description...">
+                <label for="search">Buscar</label>
+                <input type="text" id="search" placeholder="Buscar por nombre o descripción...">
             </div>
             
             <div class="filter-group">
-                <label for="api_type">API Type</label>
+                <label for="api_type">Tipo de API</label>
                 <select id="api_type">
-                    <option value="">All Types</option>
+                    <option value="">Todos los Tipos</option>
                     <option value="Admin">Admin</option>
                     <option value="Portal">Portal</option>
                     <option value="Webhook">Webhook</option>
@@ -472,23 +472,23 @@
             </div>
             
             <div class="filter-group">
-                <label for="status">Status</label>
+                <label for="status">Estado</label>
                 <select id="status">
-                    <option value="">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="draft">Draft</option>
-                    <option value="deprecated">Deprecated</option>
+                    <option value="">Todos los Estados</option>
+                    <option value="active">Activo</option>
+                    <option value="draft">Borrador</option>
+                    <option value="deprecated">Obsoleto</option>
                 </select>
             </div>
             
             <div class="filter-group">
                 <label for="tags">Tags</label>
-                <input type="text" id="tags" placeholder="Filter by tags...">
+                <input type="text" id="tags" placeholder="Filtrar por etiquetas...">
             </div>
             
             <div class="filter-group">
                 <label>&nbsp;</label>
-                <button type="button" class="btn btn-primary" id="apply-filters">Apply Filters</button>
+                <button type="button" class="btn btn-primary" id="apply-filters">Aplicar Filtros</button>
             </div>
         </div>
 
@@ -505,14 +505,14 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>API Type</th>
-                        <th>Status</th>
+                        <th>Nombre</th>
+                        <th>Tipo de API</th>
+                        <th>Estado</th>
                         <th>Owner</th>
                         <th>Version</th>
                         <th>Tags</th>
                         <th>Updated</th>
-                        <th>Actions</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="services-table">
@@ -541,13 +541,13 @@
                 <input type="hidden" id="service-id">
                 
                 <div class="form-group">
-                    <label for="name">Name <span class="required">*</span></label>
+                    <label for="name">Nombre <span class="required">*</span></label>
                     <input type="text" id="name" name="name" required>
                     <div class="help-text">Service name (unique, lowercase, no spaces)</div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="description">Description <span class="required">*</span></label>
+                    <label for="description">Descripción <span class="required">*</span></label>
                     <textarea id="description" name="description" required></textarea>
                     <div class="help-text">Brief description of what this microservice does</div>
                 </div>
@@ -559,9 +559,9 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="form_api_type">API Type <span class="required">*</span></label>
+                    <label for="form_api_type">Tipo de API <span class="required">*</span></label>
                     <select id="form_api_type" name="api_type" required>
-                        <option value="">Select API Type</option>
+                        <option value="">Seleccionar Tipo de API</option>
                         <option value="Admin">Admin</option>
                         <option value="Portal">Portal</option>
                         <option value="Webhook">Webhook</option>
@@ -576,11 +576,11 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="form_status">Status</label>
+                    <label for="form_status">Estado</label>
                     <select id="form_status" name="status">
-                        <option value="active">Active</option>
-                        <option value="draft">Draft</option>
-                        <option value="deprecated">Deprecated</option>
+                        <option value="active">Activo</option>
+                        <option value="draft">Borrador</option>
+                        <option value="deprecated">Obsoleto</option>
                     </select>
                 </div>
                 
@@ -603,8 +603,8 @@
                 </div>
                 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="submit-btn">Save Microservice</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submit-btn">Guardar Microservicio</button>
                 </div>
             </form>
         </div>

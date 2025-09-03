@@ -46,28 +46,28 @@ const elements = {
 // Section metadata
 const sectionInfo = {
     all: {
-        title: 'All Services',
-        description: 'Browse all available microservice APIs',
+        title: 'Todos los Servicios',
+        description: 'Explora todas las APIs de microservicios disponibles',
         icon: '📋'
     },
     Admin: {
-        title: 'Admin Services',
-        description: 'Internal administration and management APIs',
+        title: 'Servicios de Administración',
+        description: 'APIs internas de administración y gestión',
         icon: '🔧'
     },
     Portal: {
-        title: 'Portal Services',
-        description: 'Public-facing and customer portal APIs',
+        title: 'Servicios de Portal',
+        description: 'APIs públicas y de portal para clientes',
         icon: '🌐'
     },
     Webhook: {
-        title: 'Webhook Services',
-        description: 'Event-driven and notification webhook endpoints',
+        title: 'Servicios de Webhook',
+        description: 'Endpoints de webhooks basados en eventos y notificaciones',
         icon: '🔗'
     },
     Integraciones: {
-        title: 'Integration Services',
-        description: 'Third-party integration and connector APIs',
+        title: 'Servicios de Integración',
+        description: 'APIs de integración y conectores de terceros',
         icon: '🔌'
     }
 };
@@ -140,12 +140,12 @@ async function loadServices() {
             updateCounts();
             filterAndRenderServices();
         } else {
-            showError('Failed to load services: ' + (result.message || 'Unknown error'));
+            showError('Error al cargar servicios: ' + (result.message || 'Error desconocido'));
         }
         
     } catch (error) {
         console.error('Error loading services:', error);
-        showError('Failed to connect to server');
+        showError('Error al conectar con el servidor');
     } finally {
         showLoading(false);
     }
@@ -292,7 +292,7 @@ function createServiceCard(service) {
                     rel="noopener noreferrer"
                     class="view-docs-btn"
                 >
-                    View Documentation
+                    Ver Documentación
                     <span>🔗</span>
                 </a>
             </div>
@@ -353,12 +353,12 @@ function showEmptyState() {
     elements.servicesGrid.style.display = 'none';
     elements.emptyState.style.display = 'block';
     
-    let message = 'No microservices match your current filters.';
+    let message = 'No hay microservicios que coincidan con tus filtros actuales.';
     
     if (currentSearch) {
-        message = `No services found for "${currentSearch}".`;
+        message = `No se encontraron servicios para "${currentSearch}".`;
     } else if (currentSection !== 'all') {
-        message = `No services found in the ${sectionInfo[currentSection].title.toLowerCase()} section.`;
+        message = `No se encontraron servicios en la sección ${sectionInfo[currentSection].title.toLowerCase()}.`;
     }
     
     elements.emptyStateMessage.textContent = message;
@@ -387,10 +387,10 @@ function showError(message) {
     
     elements.emptyState.innerHTML = `
         <div class="empty-state-icon">⚠️</div>
-        <h3>Error Loading Services</h3>
+        <h3>Error al Cargar Servicios</h3>
         <p>${escapeHtml(message)}</p>
         <button onclick="loadServices()" class="view-docs-btn" style="margin-top: 1rem;">
-            Try Again
+            Intentar de Nuevo
         </button>
     `;
 }
@@ -436,10 +436,10 @@ function formatDate(dateString) {
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
-    if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`;
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `hace ${diffDays} días`;
+    if (diffDays < 30) return `hace ${Math.ceil(diffDays / 7)} semanas`;
+    if (diffDays < 365) return `hace ${Math.ceil(diffDays / 30)} meses`;
     
     return date.toLocaleDateString();
 }

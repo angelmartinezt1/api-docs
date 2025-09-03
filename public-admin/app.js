@@ -101,7 +101,7 @@ function setupEventListeners() {
  * Setup file upload functionality
  */
 function setupFileUpload() {
-    // Click to upload
+    // Clic para subir
     elements.fileUpload.addEventListener('click', () => {
         elements.specFileInput.click();
     });
@@ -109,7 +109,7 @@ function setupFileUpload() {
     // File input change
     elements.specFileInput.addEventListener('change', handleFileSelect);
     
-    // Drag and drop
+    // Arrastrar y soltar
     elements.fileUpload.addEventListener('dragover', (e) => {
         e.preventDefault();
         elements.fileUpload.classList.add('dragover');
@@ -146,12 +146,12 @@ async function loadMicroservices(filters = {}) {
             currentFilters = filters;
             renderTable();
         } else {
-            showToast(result.message || 'Failed to load microservices', 'error');
+            showToast(result.message || 'Error al cargar microservicios', 'error');
         }
         
     } catch (error) {
         console.error('Error loading microservices:', error);
-        showToast('Failed to connect to server', 'error');
+        showToast('Error al conectar con el servidor', 'error');
     } finally {
         showLoading(false);
     }
@@ -197,7 +197,7 @@ function renderTable() {
                 <small class="text-muted">${escapeHtml(service.description)}</small>
             </td>
             <td><span class="api-type">${escapeHtml(service.api_type)}</span></td>
-            <td><span class="status status-${service.status}">${service.status}</span></td>
+            <td><span class="status status-${service.status}">${translateStatus(service.status)}</span></td>
             <td>${escapeHtml(service.owner_dev_name)}</td>
             <td>${escapeHtml(service.version || '')}</td>
             <td>
@@ -213,7 +213,7 @@ function renderTable() {
             <td>
                 <div class="actions">
                     <button class="btn btn-sm btn-primary" onclick="editService('${service.id}')">
-                        Edit
+                        Editar
                     </button>
                     <button class="btn btn-sm btn-secondary" onclick="replaceSpec('${service.id}')">
                         Replace JSON
@@ -223,7 +223,7 @@ function renderTable() {
                     </a>
                     ${service.status !== 'deprecated' ? 
                         `<button class="btn btn-sm btn-danger" onclick="deprecateService('${service.id}')">
-                            Deprecate
+                            Marcar Obsoleto
                         </button>` : ''
                     }
                 </div>
@@ -237,7 +237,7 @@ function renderTable() {
  */
 function openNewServicePanel() {
     editingService = null;
-    elements.panelTitle.textContent = 'New Microservice';
+    elements.panelTitle.textContent = 'Nuevo Microservicio';
     elements.specUploadSection.style.display = 'block';
     resetForm();
     openPanel();
@@ -253,16 +253,16 @@ window.editService = async function(serviceId) {
         
         if (result.ok) {
             editingService = result.data;
-            elements.panelTitle.textContent = 'Edit Microservice';
+            elements.panelTitle.textContent = 'Editar Microservicio';
             elements.specUploadSection.style.display = 'none'; // Hide file upload for editing
             fillForm(result.data);
             openPanel();
         } else {
-            showToast(result.message || 'Failed to load service', 'error');
+            showToast(result.message || 'Error al cargar servicio', 'error');
         }
     } catch (error) {
         console.error('Error loading service:', error);
-        showToast('Failed to connect to server', 'error');
+        showToast('Error al conectar con el servidor', 'error');
     }
 };
 
@@ -291,11 +291,11 @@ window.replaceSpec = async function(serviceId) {
             resetForm();
             openPanel();
         } else {
-            showToast(result.message || 'Failed to load service', 'error');
+            showToast(result.message || 'Error al cargar servicio', 'error');
         }
     } catch (error) {
         console.error('Error loading service:', error);
-        showToast('Failed to connect to server', 'error');
+        showToast('Error al conectar con el servidor', 'error');
     }
 };
 
@@ -307,10 +307,10 @@ window.deprecateService = async function(serviceId) {
     const serviceName = service ? service.name : 'this service';
     
     const confirmed = showConfirmDialog(
-        'Deprecate Microservice',
+        'Marcar Microservicio como Obsoleto',
         `Are you sure you want to deprecate "${serviceName}"?`,
-        'This will mark the service as deprecated and hide it from active listings. The API specification will remain accessible for existing integrations.',
-        'Deprecate',
+        'Esto marcará el servicio como obsoleto y lo ocultará de los listados activos. La especificación de la API seguirá siendo accesible para las integraciones existentes.',
+        'Marcar Obsoleto',
         'danger'
     );
     
@@ -323,14 +323,14 @@ window.deprecateService = async function(serviceId) {
         const result = await response.json();
         
         if (result.ok) {
-            showToast('Service deprecated successfully', 'success');
+            showToast('Servicio marcado como obsoleto exitosamente', 'success');
             loadMicroservices(currentFilters);
         } else {
-            showToast(result.message || 'Failed to deprecate service', 'error');
+            showToast(result.message || 'Error al marcar servicio como obsoleto', 'error');
         }
     } catch (error) {
         console.error('Error deprecating service:', error);
-        showToast('Failed to connect to server', 'error');
+        showToast('Error al conectar con el servidor', 'error');
     }
 };
 
@@ -402,14 +402,14 @@ async function handleServiceCreation() {
             closePanel();
             loadMicroservices(currentFilters);
         } else {
-            showToast(result.message || 'Failed to create service', 'error');
+            showToast(result.message || 'Error al crear servicio', 'error');
         }
     } catch (error) {
         console.error('Error creating service:', error);
-        showToast('Failed to connect to server', 'error');
+        showToast('Error al conectar con el servidor', 'error');
     } finally {
         elements.submitBtn.disabled = false;
-        elements.submitBtn.textContent = 'Save Microservice';
+        elements.submitBtn.textContent = 'Guardar Microservicio';
     }
 }
 
@@ -453,14 +453,14 @@ async function handleServiceUpdate() {
             closePanel();
             loadMicroservices(currentFilters);
         } else {
-            showToast(result.message || 'Failed to update service', 'error');
+            showToast(result.message || 'Error al actualizar servicio', 'error');
         }
     } catch (error) {
         console.error('Error updating service:', error);
-        showToast('Failed to connect to server', 'error');
+        showToast('Error al conectar con el servidor', 'error');
     } finally {
         elements.submitBtn.disabled = false;
-        elements.submitBtn.textContent = 'Save Microservice';
+        elements.submitBtn.textContent = 'Guardar Microservicio';
     }
 }
 
@@ -512,14 +512,14 @@ async function handleSpecReplacement() {
             closePanel();
             loadMicroservices(currentFilters);
         } else {
-            showToast(result.message || 'Failed to replace specification', 'error');
+            showToast(result.message || 'Error al reemplazar especificación', 'error');
         }
     } catch (error) {
         console.error('Error replacing specification:', error);
-        showToast('Failed to connect to server', 'error');
+        showToast('Error al conectar con el servidor', 'error');
     } finally {
         elements.submitBtn.disabled = false;
-        elements.submitBtn.textContent = 'Save Microservice';
+        elements.submitBtn.textContent = 'Guardar Microservicio';
     }
 }
 
@@ -529,13 +529,13 @@ async function handleSpecReplacement() {
 function validateFile(file) {
     // Check file extension
     if (!file.name.toLowerCase().endsWith('.json')) {
-        showToast('Only JSON files are allowed', 'error');
+        showToast('Solo se permiten archivos JSON', 'error');
         return false;
     }
     
     // Check file size
     if (file.size > MAX_FILE_SIZE) {
-        showToast('File size exceeds maximum limit (5MB)', 'error');
+        showToast('El tamaño del archivo excede el límite máximo (5MB)', 'error');
         return false;
     }
     
@@ -665,7 +665,7 @@ function showToast(message, type = 'info') {
 /**
  * Show confirmation dialog
  */
-function showConfirmDialog(title, message, details, confirmText = 'Confirm', type = 'primary') {
+function showConfirmDialog(title, message, details, confirmText = 'Confirmar', type = 'primary') {
     const typeColors = {
         primary: '#3498db',
         danger: '#e74c3c',
@@ -737,7 +737,7 @@ function showConfirmDialog(title, message, details, confirmText = 'Confirm', typ
                 color: #666;
                 cursor: pointer;
                 font-size: 0.9rem;
-            ">Cancel</button>
+            ">Cancelar</button>
             <button id="modal-confirm" style="
                 padding: 0.5rem 1rem;
                 border: none;
@@ -829,6 +829,18 @@ function formatFileSize(bytes) {
     const sizes = ['Bytes', 'KB', 'MB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Translate status values to Spanish
+ */
+function translateStatus(status) {
+    const translations = {
+        'active': 'Activo',
+        'draft': 'Borrador',
+        'deprecated': 'Obsoleto'
+    };
+    return translations[status] || status;
 }
 
 // Initialize when DOM is loaded

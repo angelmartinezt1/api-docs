@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Documentation Catalog</title>
+    <title>Catálogo de Documentación API</title>
     <style>
         * {
             margin: 0;
@@ -571,8 +571,8 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h1>API Catalog</h1>
-                <p>Browse microservice documentation</p>
+                <h1>Catálogo de APIs</h1>
+                <p>Explora la documentación de microservicios</p>
             </div>
 
             <div class="sidebar-search">
@@ -580,7 +580,7 @@
                     type="text" 
                     class="search-input" 
                     id="search-input"
-                    placeholder="Search services..." 
+                    placeholder="Buscar servicios..." 
                     autocomplete="off"
                 >
             </div>
@@ -590,7 +590,7 @@
                     <button class="nav-section-btn active" data-section="all">
                         <div style="display: flex; align-items: center;">
                             <span class="nav-section-icon">📋</span>
-                            All Services
+                            Todos los Servicios
                         </div>
                         <span class="nav-section-count" id="count-all">0</span>
                     </button>
@@ -639,7 +639,7 @@
 
             <div class="sidebar-footer">
                 <button class="clear-filters-btn" id="clear-filters-btn">
-                    Clear Filters
+                    Limpiar Filtros
                 </button>
             </div>
         </aside>
@@ -649,19 +649,19 @@
             <header class="main-header">
                 <div class="header-content">
                     <div class="header-title">
-                        <h2 id="section-title">All Services</h2>
+                        <h2 id="section-title">Todos los Servicios</h2>
                         <p class="header-subtitle" id="section-description">
-                            Browse all available microservice APIs
+                            Explora todas las APIs de microservicios disponibles
                         </p>
                     </div>
                     <div class="header-stats">
                         <div class="stat-item">
                             <span class="stat-number" id="total-services">0</span>
-                            <span class="stat-label">Services</span>
+                            <span class="stat-label">Servicios</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-number" id="active-services">0</span>
-                            <span class="stat-label">Active</span>
+                            <span class="stat-label">Activos</span>
                         </div>
                     </div>
                 </div>
@@ -681,9 +681,9 @@
                 <!-- Empty State -->
                 <div class="empty-state" id="empty-state" style="display: none;">
                     <div class="empty-state-icon">📄</div>
-                    <h3>No services found</h3>
+                    <h3>No se encontraron servicios</h3>
                     <p id="empty-state-message">
-                        No microservices match your current filters. Try adjusting your search or browse a different section.
+                        No hay microservicios que coincidan con tus filtros actuales. Intenta ajustar tu búsqueda o navegar por una sección diferente.
                     </p>
                 </div>
             </div>
