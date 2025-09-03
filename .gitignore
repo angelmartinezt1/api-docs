@@ -48,3 +48,7 @@ data/
 # API specs (but keep the folder)
 server/storage/specs/*
 !server/storage/specs/.gitkeep
+
+# SST
+.sst/
+.open-next/

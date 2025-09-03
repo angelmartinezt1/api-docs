@@ -11,19 +11,30 @@
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
     "migrate": "node server/migrations/run.js",
-    "seed": "node server/migrations/seed.js"
+    "seed": "node server/migrations/seed.js",
+    "deploy": "sst deploy",
+    "deploy:prod": "sst deploy --stage=production",
+    "remove": "sst remove",
+    "dev:sst": "sst dev",
+    "console": "sst console"
   },
   "dependencies": {
+    "cors": "^2.8.0",
     "express": "^5.0.0",
     "multer": "^2.0.0",
     "sqlite3": "^5.1.0",
-    "ulid": "^2.3.0",
-    "cors": "^2.8.0"
+    "ulid": "^2.3.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0"
+    "nodemon": "^3.0.0",
+    "sst": "^3.17.12"
   },
-  "keywords": ["api", "documentation", "express", "vanilla-js"],
+  "keywords": [
+    "api",
+    "documentation",
+    "express",
+    "vanilla-js"
+  ],
   "author": "",
   "license": "ISC"
 }
