@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import fs from 'fs';
 import { runQuery, getOne, getAll } from '../db.js';
 import { nowIso, newId, isAllowedApiType, isAllowedStatus } from '../lib/utils.js';
+import config from '../config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,7 +15,7 @@ const router = express.Router();
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const specsDir = join(__dirname, '..', 'storage', 'specs');
+        const specsDir = config.upload.absoluteStoragePath;
         if (!fs.existsSync(specsDir)) {
             fs.mkdirSync(specsDir, { recursive: true });
         }
@@ -33,13 +34,14 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage,
     limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
+        fileSize: config.upload.maxFileSize
     },
     fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
+        const fileExtension = '.' + file.originalname.split('.').pop();
+        if (file.mimetype === 'application/json' || config.upload.allowedExtensions.includes(fileExtension)) {
             cb(null, true);
         } else {
-            cb(new Error('Only JSON files are allowed'), false);
+            cb(new Error(`Only files with extensions ${config.upload.allowedExtensions.join(', ')} are allowed`), false);
         }
     }
 });
@@ -406,7 +408,7 @@ router.put('/:id/spec', upload.single('spec_file'), async (req, res) => {
         }
         
         // Remove old spec file
-        const oldSpecPath = join(__dirname, '..', 'storage', 'specs', existing.spec_filename);
+        const oldSpecPath = join(config.upload.absoluteStoragePath, existing.spec_filename);
         if (fs.existsSync(oldSpecPath)) {
             fs.unlinkSync(oldSpecPath);
         }

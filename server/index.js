@@ -6,36 +6,57 @@ import fs from 'fs';
 import { runQuery, getDatabase, closeDatabase } from './db.js';
 import microservicesRouter from './routes/microservices.js';
 import { errorHandler, notFoundHandler, attachResponseHelpers } from './lib/errorHandler.js';
+import config, { validateConfig, logConfig } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Validate configuration on startup
+try {
+    validateConfig();
+    if (config.development.devMode) {
+        logConfig();
+    }
+} catch (error) {
+    console.error('❌ Configuration Error:', error.message);
+    process.exit(1);
+}
+
 const app = express();
-const PORT = process.env.PORT || 3002;
 
 // Middleware
-app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increased limit for JSON uploads
+app.use(cors({
+    origin: config.cors.origins,
+    credentials: config.cors.credentials
+}));
+app.use(express.json({ 
+    limit: `${Math.round(config.upload.maxFileSize / 1024 / 1024)}mb` 
+}));
 app.use(attachResponseHelpers);
 
 // Serve static files for specs
-app.use('/specs', express.static(join(__dirname, 'storage', 'specs')));
+app.use('/specs', express.static(config.static.absoluteSpecsPath));
 
 // API routes
 app.use('/api/microservices', microservicesRouter);
 
 // Serve frontend static files
-app.use('/admin', express.static(join(__dirname, '..', 'public-admin')));
-app.use('/docs', express.static(join(__dirname, '..', 'docs')));
-app.use('/', express.static(join(__dirname, '..', 'public-front')));
+app.use('/admin', express.static(config.static.absoluteAdminPath));
+app.use('/docs', express.static(config.static.absoluteDocsPath));
+app.use('/', express.static(config.static.absoluteFrontPath));
 
 /**
  * Run database migrations
  */
 async function runMigrations() {
+    if (!config.migrations.autoMigrate) {
+        console.log('🔄 Auto-migration disabled, skipping migrations');
+        return;
+    }
+    
     console.log('🔄 Running database migrations...');
     
-    const migrationsDir = join(__dirname, 'migrations');
+    const migrationsDir = config.migrations.absolutePath;
     
     if (!fs.existsSync(migrationsDir)) {
         console.log('No migrations directory found. Skipping migrations.');
@@ -79,7 +100,7 @@ async function runMigrations() {
 
             console.log(`🚀 Executing migration: ${file}`);
             
-            const migrationPath = join(migrationsDir, file);
+            const migrationPath = join(config.migrations.absolutePath, file);
             const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
             
             // Split by semicolon and execute each statement
@@ -123,8 +144,7 @@ app.get('/health', async (req, res) => {
         await runQuery('SELECT 1');
         
         // Check if specs directory exists
-        const specsDir = join(__dirname, 'storage', 'specs');
-        const specsExists = fs.existsSync(specsDir);
+        const specsExists = fs.existsSync(config.static.absoluteSpecsPath);
         
         res.success('System healthy', {
             database: 'connected',
@@ -145,14 +165,22 @@ app.use(errorHandler);
  */
 async function startServer() {
     try {
+        // Ensure required directories exist
+        if (!fs.existsSync(config.static.absoluteSpecsPath)) {
+            fs.mkdirSync(config.static.absoluteSpecsPath, { recursive: true });
+            console.log(`📁 Created specs directory: ${config.static.absoluteSpecsPath}`);
+        }
+        
         // Run migrations first
         await runMigrations();
         
         // Start Express server
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
-            console.log(`📊 Admin panel: http://localhost:${PORT}/admin`);
-            console.log(`📖 Public catalog: http://localhost:${PORT}`);
+        app.listen(config.server.port, config.server.host, () => {
+            console.log(`🚀 Server running on http://${config.server.host}:${config.server.port}`);
+            console.log(`📊 Admin panel: http://${config.server.host}:${config.server.port}/admin`);
+            console.log(`📖 Public catalog: http://${config.server.host}:${config.server.port}`);
+            console.log(`🔍 Docs renderer: http://${config.server.host}:${config.server.port}/docs`);
+            console.log(`❤️  Health check: http://${config.server.host}:${config.server.port}/health`);
         });
 
         // Graceful shutdown

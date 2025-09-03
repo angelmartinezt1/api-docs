@@ -2,18 +2,19 @@ import sqlite3 from 'sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
+import config from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Database file path
-const DB_PATH = join(__dirname, '..', 'data', 'docs.db');
-const DATA_DIR = join(__dirname, '..', 'data');
+// Database file path from configuration
+const DB_PATH = config.database.absolutePath;
+const DATA_DIR = dirname(DB_PATH);
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    console.log('Created data directory:', DATA_DIR);
+    console.log('📁 Created data directory:', DATA_DIR);
 }
 
 // SQLite connection instance
@@ -27,16 +28,27 @@ export function getDatabase() {
     if (!db) {
         db = new sqlite3.Database(DB_PATH, (err) => {
             if (err) {
-                console.error('Error opening database:', err.message);
+                console.error('❌ Error opening database:', err.message);
                 throw err;
             }
-            console.log('Connected to SQLite database at:', DB_PATH);
+            if (config.logging.sqlQueries) {
+                console.log('🗄️  Connected to SQLite database at:', DB_PATH);
+            }
         });
 
-        // Enable foreign keys and WAL mode for better performance
+        // Configure SQLite based on environment variables
         db.serialize(() => {
-            db.run("PRAGMA foreign_keys = ON");
-            db.run("PRAGMA journal_mode = WAL");
+            if (config.database.foreignKeys) {
+                db.run("PRAGMA foreign_keys = ON");
+            }
+            if (config.database.walMode) {
+                db.run("PRAGMA journal_mode = WAL");
+            }
+            
+            // Additional pragmas for better performance
+            db.run("PRAGMA synchronous = NORMAL");
+            db.run("PRAGMA cache_size = 1000");
+            db.run("PRAGMA temp_store = MEMORY");
         });
     }
     return db;
@@ -67,10 +79,21 @@ export function closeDatabase() {
 export function runQuery(sql, params = []) {
     return new Promise((resolve, reject) => {
         const database = getDatabase();
+        
+        if (config.logging.sqlQueries) {
+            console.log('🔍 SQL Query:', sql, 'Params:', params);
+        }
+        
         database.run(sql, params, function(err) {
             if (err) {
+                console.error('❌ SQL Error:', err.message);
+                console.error('Query:', sql);
+                console.error('Params:', params);
                 reject(err);
             } else {
+                if (config.logging.sqlQueries) {
+                    console.log('✅ Query executed, changes:', this.changes, 'lastID:', this.lastID);
+                }
                 resolve({ 
                     lastID: this.lastID, 
                     changes: this.changes 
@@ -89,10 +112,21 @@ export function runQuery(sql, params = []) {
 export function getOne(sql, params = []) {
     return new Promise((resolve, reject) => {
         const database = getDatabase();
+        
+        if (config.logging.sqlQueries) {
+            console.log('🔍 SQL Query (getOne):', sql, 'Params:', params);
+        }
+        
         database.get(sql, params, (err, row) => {
             if (err) {
+                console.error('❌ SQL Error (getOne):', err.message);
+                console.error('Query:', sql);
+                console.error('Params:', params);
                 reject(err);
             } else {
+                if (config.logging.sqlQueries) {
+                    console.log('✅ Query executed (getOne), found:', !!row);
+                }
                 resolve(row || null);
             }
         });
@@ -108,10 +142,21 @@ export function getOne(sql, params = []) {
 export function getAll(sql, params = []) {
     return new Promise((resolve, reject) => {
         const database = getDatabase();
+        
+        if (config.logging.sqlQueries) {
+            console.log('🔍 SQL Query (getAll):', sql, 'Params:', params);
+        }
+        
         database.all(sql, params, (err, rows) => {
             if (err) {
+                console.error('❌ SQL Error (getAll):', err.message);
+                console.error('Query:', sql);
+                console.error('Params:', params);
                 reject(err);
             } else {
+                if (config.logging.sqlQueries) {
+                    console.log('✅ Query executed (getAll), rows:', rows?.length || 0);
+                }
                 resolve(rows || []);
             }
         });
