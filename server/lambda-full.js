@@ -7,6 +7,8 @@ import serverless from 'serverless-http';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import multer from 'multer';
+import { ulid } from 'ulid';
 
 console.log('Lambda starting up...');
 
@@ -52,6 +54,12 @@ const Microservice = mongoose.model('Microservice', microserviceSchema);
 
 // Express app
 const app = express();
+
+// Multer for file uploads (memory storage for Lambda)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Middleware
 app.use(cors({
@@ -131,6 +139,261 @@ app.get('/api/microservices/:id', async (req, res) => {
         res.status(500).json({
             ok: false,
             message: 'Failed to fetch microservice',
+            data: { error: error.message }
+        });
+    }
+});
+
+// POST - Create new microservice
+app.post('/api/microservices', upload.single('spec_file'), async (req, res) => {
+    try {
+        await connectToMongoDB();
+        
+        const { name, description, owner_dev_name, api_type, version, status, tags } = req.body;
+        
+        // Validation
+        if (!name || !description || !owner_dev_name || !api_type) {
+            return res.status(400).json({
+                ok: false,
+                message: 'Missing required fields: name, description, owner_dev_name, api_type',
+                data: null
+            });
+        }
+
+        if (!['Admin', 'Portal', 'Webhook', 'Integraciones'].includes(api_type)) {
+            return res.status(400).json({
+                ok: false,
+                message: 'Invalid api_type. Must be one of: Admin, Portal, Webhook, Integraciones',
+                data: null
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                ok: false,
+                message: 'JSON specification file is required',
+                data: null
+            });
+        }
+
+        // Validate JSON
+        try {
+            JSON.parse(req.file.buffer.toString());
+        } catch (error) {
+            return res.status(400).json({
+                ok: false,
+                message: 'Invalid JSON file',
+                data: null
+            });
+        }
+
+        // Check if name exists
+        const existing = await Microservice.findOne({ name });
+        if (existing) {
+            return res.status(400).json({
+                ok: false,
+                message: 'Microservice name already exists',
+                data: null
+            });
+        }
+
+        // Generate filename and save microservice
+        const id = ulid();
+        const finalVersion = version || '0.1.0';
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const spec_filename = `${api_type}-${name}-${finalVersion}-${date}.json`;
+
+        const newMicroservice = new Microservice({
+            _id: id,
+            name,
+            description,
+            owner_dev_name,
+            api_type,
+            version: finalVersion,
+            status: status || 'active',
+            tags: tags || '',
+            spec_filename
+        });
+
+        await newMicroservice.save();
+
+        res.status(201).json({
+            ok: true,
+            message: 'Microservice created successfully',
+            data: newMicroservice
+        });
+
+    } catch (error) {
+        console.error('Error creating microservice:', error);
+        res.status(500).json({
+            ok: false,
+            message: 'Failed to create microservice',
+            data: { error: error.message }
+        });
+    }
+});
+
+// PUT - Update microservice
+app.put('/api/microservices/:id', async (req, res) => {
+    try {
+        await connectToMongoDB();
+        
+        const { id } = req.params;
+        const { name, description, owner_dev_name, api_type, version, status, tags } = req.body;
+        
+        const existing = await Microservice.findById(id);
+        if (!existing) {
+            return res.status(404).json({
+                ok: false,
+                message: 'Microservice not found',
+                data: null
+            });
+        }
+
+        // Check name uniqueness if changing name
+        if (name && name !== existing.name) {
+            const nameExists = await Microservice.findOne({ name, _id: { $ne: id } });
+            if (nameExists) {
+                return res.status(400).json({
+                    ok: false,
+                    message: 'Microservice name already exists',
+                    data: null
+                });
+            }
+        }
+
+        // Build update object
+        const updateData = { updated_at: new Date() };
+        if (name) updateData.name = name;
+        if (description) updateData.description = description;
+        if (owner_dev_name) updateData.owner_dev_name = owner_dev_name;
+        if (api_type) updateData.api_type = api_type;
+        if (version) updateData.version = version;
+        if (status) updateData.status = status;
+        if (tags !== undefined) updateData.tags = tags;
+
+        const updatedMicroservice = await Microservice.findByIdAndUpdate(
+            id, 
+            updateData, 
+            { new: true }
+        );
+
+        res.json({
+            ok: true,
+            message: 'Microservice updated successfully',
+            data: updatedMicroservice
+        });
+
+    } catch (error) {
+        console.error('Error updating microservice:', error);
+        res.status(500).json({
+            ok: false,
+            message: 'Failed to update microservice',
+            data: { error: error.message }
+        });
+    }
+});
+
+// PUT - Update spec file
+app.put('/api/microservices/:id/spec', upload.single('spec_file'), async (req, res) => {
+    try {
+        await connectToMongoDB();
+        
+        const { id } = req.params;
+        
+        const existing = await Microservice.findById(id);
+        if (!existing) {
+            return res.status(404).json({
+                ok: false,
+                message: 'Microservice not found',
+                data: null
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                ok: false,
+                message: 'JSON specification file is required',
+                data: null
+            });
+        }
+
+        // Validate JSON
+        try {
+            JSON.parse(req.file.buffer.toString());
+        } catch (error) {
+            return res.status(400).json({
+                ok: false,
+                message: 'Invalid JSON file',
+                data: null
+            });
+        }
+
+        // Generate new filename
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const spec_filename = `${existing.api_type}-${existing.name}-${existing.version}-${date}.json`;
+
+        const updatedMicroservice = await Microservice.findByIdAndUpdate(
+            id,
+            { 
+                spec_filename,
+                updated_at: new Date()
+            },
+            { new: true }
+        );
+
+        res.json({
+            ok: true,
+            message: 'Specification updated successfully',
+            data: updatedMicroservice
+        });
+
+    } catch (error) {
+        console.error('Error updating specification:', error);
+        res.status(500).json({
+            ok: false,
+            message: 'Failed to update specification',
+            data: { error: error.message }
+        });
+    }
+});
+
+// DELETE - Soft delete (deprecate)
+app.delete('/api/microservices/:id', async (req, res) => {
+    try {
+        await connectToMongoDB();
+        
+        const { id } = req.params;
+        
+        const existing = await Microservice.findById(id);
+        if (!existing) {
+            return res.status(404).json({
+                ok: false,
+                message: 'Microservice not found',
+                data: null
+            });
+        }
+
+        const updatedMicroservice = await Microservice.findByIdAndUpdate(
+            id,
+            { 
+                status: 'deprecated',
+                updated_at: new Date()
+            },
+            { new: true }
+        );
+
+        res.json({
+            ok: true,
+            message: 'Microservice deprecated successfully',
+            data: updatedMicroservice
+        });
+
+    } catch (error) {
+        console.error('Error deprecating microservice:', error);
+        res.status(500).json({
+            ok: false,
+            message: 'Failed to deprecate microservice',
             data: { error: error.message }
         });
     }

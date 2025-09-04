@@ -27,7 +27,7 @@
     "multer": "^2.0.0",
     "serverless-http": "^4.0.0",
     "sqlite3": "^5.1.0",
-    "ulid": "^2.3.0"
+    "ulid": "^2.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0",
