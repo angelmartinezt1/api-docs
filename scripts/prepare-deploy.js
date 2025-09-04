@@ -13,7 +13,22 @@ const __dirname = path.dirname(__filename);
 
 const stage = process.env.SST_STAGE || 'dev';
 // Para desarrollo local, mantener API local
-const apiBaseUrl = process.env.API_URL || '/api';
+let apiBaseUrl = process.env.API_URL || '/api';
+
+// For Lambda deployment, add /api prefix to the base URL
+if (process.env.API_URL && process.env.API_URL.includes('lambda-url')) {
+    // Remove trailing slash first
+    if (apiBaseUrl.endsWith('/')) {
+        apiBaseUrl = apiBaseUrl.slice(0, -1);
+    }
+    // Add /api prefix
+    apiBaseUrl = apiBaseUrl + '/api';
+} else {
+    // For local development, API_BASE should already include /api
+    if (apiBaseUrl.endsWith('/')) {
+        apiBaseUrl = apiBaseUrl.slice(0, -1);
+    }
+}
 
 console.log(`🚀 Preparing deployment for stage: ${stage}`);
 console.log(`📡 API URL: ${apiBaseUrl}`);

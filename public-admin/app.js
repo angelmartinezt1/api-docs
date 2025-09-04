@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const API_BASE = 'https://elr7vjo2sq7enr53727zflpqw40zxdhw.lambda-url.us-east-1.on.aws/';
+const API_BASE = 'https://elr7vjo2sq7enr53727zflpqw40zxdhw.lambda-url.us-east-1.on.aws/api';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // State management
