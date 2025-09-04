@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const API_BASE = '/api';
+const API_BASE = 'https://elr7vjo2sq7enr53727zflpqw40zxdhw.lambda-url.us-east-1.on.aws/';
 
 // State management
 let allServices = [];

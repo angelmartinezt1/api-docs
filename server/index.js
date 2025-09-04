@@ -196,5 +196,10 @@ async function startServer() {
     }
 }
 
-// Start the application
-startServer();
+// Export app for Lambda usage
+export default app;
+
+// Start the application only if not in Lambda environment
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    startServer();
+}

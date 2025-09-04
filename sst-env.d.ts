@@ -9,6 +9,11 @@ declare module "sst" {
       "type": "sst.aws.StaticSite"
       "url": string
     }
+    "ApiBackend": {
+      "name": string
+      "type": "sst.aws.Function"
+      "url": string
+    }
     "DocsRenderer": {
       "type": "sst.aws.StaticSite"
       "url": string

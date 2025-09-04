@@ -9,6 +9,25 @@ export default $config({
     };
   },
   async run() {
+    // API Backend - Lambda Function (must be first to get URL)
+    const api = new sst.aws.Function("ApiBackend", {
+      handler: "server/lambda-full.handler",
+      runtime: "nodejs20.x",
+      url: true,
+      timeout: "30 seconds",
+      memory: "512 MB",
+      // Sin dominio personalizado - usa el subdominio Function URL automático
+      environment: {
+        NODE_ENV: $app.stage === "production" ? "production" : "development",
+        DB_TYPE: "mongodb",
+        MONGODB_URI: "mongodb+srv://angelmartinez:oawm3eMJ3QiM4VUE@cluster0.h3axpfx.mongodb.net/api-docs",
+        PORT: "3000",
+        UPLOAD_DIR: "uploads",
+        MAX_FILE_SIZE: "5242880",
+        ALLOWED_EXTENSIONS: ".json,.yaml,.yml"
+      }
+    });
+
     // Public Admin Panel - CloudFront distribution
     const adminSite = new sst.aws.StaticSite("AdminPanel", {
       build: {
@@ -18,6 +37,7 @@ export default $config({
       // Sin dominio personalizado - usa el subdominio CloudFront automático
       environment: {
         VITE_STAGE: $app.stage,
+        API_URL: api.url
       }
     });
 
@@ -30,6 +50,7 @@ export default $config({
       // Sin dominio personalizado - usa el subdominio CloudFront automático
       environment: {
         VITE_STAGE: $app.stage,
+        API_URL: api.url
       }
     });
 
@@ -42,25 +63,15 @@ export default $config({
       // Sin dominio personalizado - usa el subdominio CloudFront automático
       environment: {
         VITE_STAGE: $app.stage,
+        API_URL: api.url
       }
     });
-
-    // API Backend (Optional - if you want to deploy the Express server too)
-    // const api = new sst.aws.Function("ApiBackend", {
-    //   handler: "server/index.js",
-    //   runtime: "nodejs20.x",
-    //   url: true,
-    //   // Sin dominio personalizado - usa el subdominio Function URL automático
-    //   environment: {
-    //     NODE_ENV: $app.stage === "production" ? "production" : "development",
-    //   }
-    // });
 
     return {
       adminUrl: adminSite.url,
       frontUrl: frontSite.url,
       docsUrl: docsSite.url,
-      // apiUrl: api?.url,
+      apiUrl: api.url,
     };
   },
 });

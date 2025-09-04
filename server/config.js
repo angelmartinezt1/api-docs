@@ -47,6 +47,10 @@ const config = {
     // DATABASE CONFIGURATION
     // =============================================================================
     database: {
+        type: process.env.DB_TYPE || 'mongodb',
+        // MongoDB configuration
+        mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/api-docs',
+        // SQLite configuration (fallback)
         path: process.env.DB_PATH || './data/database.sqlite',
         absolutePath: join(__dirname, process.env.DB_PATH || './data/database.sqlite'),
         walMode: parseBoolean(process.env.DB_WAL_MODE, true),
