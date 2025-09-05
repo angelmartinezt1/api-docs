@@ -9,6 +9,11 @@ export default $config({
     };
   },
   async run() {
+    // S3 Bucket for JSON specifications
+    const specsBucket = new sst.aws.Bucket("SpecsBucket", {
+      public: true
+    });
+
     // API Backend - Lambda Function (must be first to get URL)
     const api = new sst.aws.Function("ApiBackend", {
       handler: "server/lambda-full.handler",
@@ -33,8 +38,15 @@ export default $config({
         PORT: "3000",
         UPLOAD_DIR: "uploads",
         MAX_FILE_SIZE: "5242880",
-        ALLOWED_EXTENSIONS: ".json,.yaml,.yml"
-      }
+        ALLOWED_EXTENSIONS: ".json,.yaml,.yml",
+        SPECS_BUCKET: specsBucket.name
+      },
+      permissions: [
+        {
+          actions: ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+          resources: [$interpolate`${specsBucket.arn}/*`]
+        }
+      ]
     });
 
     // Public Admin Panel - CloudFront distribution
@@ -81,6 +93,7 @@ export default $config({
       frontUrl: frontSite.url,
       docsUrl: docsSite.url,
       apiUrl: api.url,
+      specsBucketUrl: specsBucket.url,
     };
   },
 });

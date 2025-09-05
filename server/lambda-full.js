@@ -8,8 +8,29 @@ import express from 'express';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { ulid } from 'ulid';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 console.log('Lambda starting up...');
+
+// S3 Client configuration
+const s3Client = new S3Client({
+    region: 'us-east-1'
+});
+
+const SPECS_BUCKET = process.env.SPECS_BUCKET;
+
+// Helper function to upload JSON to S3
+async function uploadSpecToS3(filename, jsonContent) {
+    const command = new PutObjectCommand({
+        Bucket: SPECS_BUCKET,
+        Key: filename,
+        Body: jsonContent,
+        ContentType: 'application/json'
+    });
+    
+    await s3Client.send(command);
+    return `https://${SPECS_BUCKET}.s3.amazonaws.com/${filename}`;
+}
 
 // MongoDB connection
 let isConnected = false;
@@ -45,6 +66,7 @@ const microserviceSchema = new mongoose.Schema({
     status: { type: String, default: 'draft', enum: ['draft', 'active', 'deprecated'] },
     tags: { type: String, default: '' },
     spec_filename: { type: String, required: true },
+    spec_url: { type: String, required: true },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now }
 }, { _id: false });
@@ -198,6 +220,9 @@ app.post('/api/microservices', upload.single('spec_file'), async (req, res) => {
         const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const spec_filename = `${api_type}-${name}-${finalVersion}-${date}.json`;
 
+        // Upload JSON file to S3
+        const specUrl = await uploadSpecToS3(spec_filename, req.file.buffer);
+
         const newMicroservice = new Microservice({
             _id: id,
             name,
@@ -207,7 +232,8 @@ app.post('/api/microservices', upload.single('spec_file'), async (req, res) => {
             version: finalVersion,
             status: status || 'active',
             tags: tags || '',
-            spec_filename
+            spec_filename,
+            spec_url: specUrl
         });
 
         await newMicroservice.save();
@@ -324,14 +350,17 @@ app.put('/api/microservices/:id/spec', upload.single('spec_file'), async (req, r
             });
         }
 
-        // Generate new filename
+        // Generate new filename and upload to S3
         const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const spec_filename = `${existing.api_type}-${existing.name}-${existing.version}-${date}.json`;
+        
+        const specUrl = await uploadSpecToS3(spec_filename, req.file.buffer);
 
         const updatedMicroservice = await Microservice.findByIdAndUpdate(
             id,
             { 
                 spec_filename,
+                spec_url: specUrl,
                 updated_at: new Date()
             },
             { new: true }
@@ -389,6 +418,54 @@ app.delete('/api/microservices/:id', async (req, res) => {
         res.status(500).json({
             ok: false,
             message: 'Failed to deprecate microservice',
+            data: { error: error.message }
+        });
+    }
+});
+
+// GET - Serve JSON specs from S3
+app.get('/specs/:filename', async (req, res) => {
+    try {
+        const { filename } = req.params;
+        
+        // Validate filename format to prevent path traversal
+        if (!/^[a-zA-Z0-9\-._]+\.json$/.test(filename)) {
+            return res.status(400).json({
+                ok: false,
+                message: 'Invalid filename format',
+                data: null
+            });
+        }
+        
+        const command = new GetObjectCommand({
+            Bucket: SPECS_BUCKET,
+            Key: filename
+        });
+        
+        const response = await s3Client.send(command);
+        const specContent = await response.Body.transformToString();
+        
+        res.set({
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=3600'
+        });
+        
+        res.send(specContent);
+        
+    } catch (error) {
+        console.error('Error retrieving spec:', error);
+        
+        if (error.name === 'NoSuchKey') {
+            return res.status(404).json({
+                ok: false,
+                message: 'Specification file not found',
+                data: null
+            });
+        }
+        
+        res.status(500).json({
+            ok: false,
+            message: 'Failed to retrieve specification',
             data: { error: error.message }
         });
     }
