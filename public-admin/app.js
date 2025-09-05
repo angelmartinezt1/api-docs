@@ -216,10 +216,10 @@ function renderTable() {
                         Editar
                     </button>
                     <button class="btn btn-sm btn-secondary" onclick="replaceSpec('${service.id}')">
-                        Replace JSON
+                        Reemplazar JSON
                     </button>
                     <a href="${service.spec_url || API_BASE + '/specs/' + service.spec_filename}" target="_blank" class="btn btn-sm btn-secondary">
-                        View JSON
+                        Ver JSON
                     </a>
                     ${service.status !== 'deprecated' ? 
                         `<button class="btn btn-sm btn-danger" onclick="deprecateService('${service.id}')">
