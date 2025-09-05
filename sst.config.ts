@@ -13,7 +13,16 @@ export default $config({
     const api = new sst.aws.Function("ApiBackend", {
       handler: "server/lambda-full.handler",
       runtime: "nodejs20.x",
-      url: true,
+      url: {
+        cors: {
+          allowCredentials: false,
+          allowHeaders: ["content-type", "authorization"],
+          allowMethods: ["*"],
+          allowOrigins: ["https://d36kjm8ifn5guz.cloudfront.net"],
+          exposeHeaders: ["*"],
+          maxAge: "86400 seconds"
+        }
+      },
       timeout: "30 seconds",
       memory: "512 MB",
       // Sin dominio personalizado - usa el subdominio Function URL automático

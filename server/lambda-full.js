@@ -5,7 +5,6 @@
 
 import serverless from 'serverless-http';
 import express from 'express';
-import cors from 'cors';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { ulid } from 'ulid';
@@ -61,11 +60,7 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-// Middleware
-app.use(cors({
-    origin: '*',
-    credentials: false
-}));
+// Middleware - Solo JSON parsing, CORS manejado en el wrapper
 app.use(express.json({ limit: '5mb' }));
 
 // Health check endpoint
@@ -421,7 +416,7 @@ app.use((req, res) => {
 // Create the serverless handler
 const serverlessHandler = serverless(app);
 
-// Wrapper handler
+// Simple wrapper handler - CORS handled by AWS Lambda Function URL
 export const handler = async (event, context) => {
     console.log('Lambda handler invoked:', event.httpMethod, event.path);
     
@@ -435,8 +430,7 @@ export const handler = async (event, context) => {
         return {
             statusCode: 500,
             headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 ok: false,
