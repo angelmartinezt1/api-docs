@@ -23,7 +23,7 @@ export default $config({
           allowCredentials: false,
           allowHeaders: ["content-type", "authorization"],
           allowMethods: ["*"],
-          allowOrigins: ["https://d36kjm8ifn5guz.cloudfront.net"],
+          allowOrigins: ["https://d36kjm8ifn5guz.cloudfront.net", "https://d3bj2prxa2zkqr.cloudfront.net"],
           exposeHeaders: ["*"],
           maxAge: "86400 seconds"
         }
@@ -59,6 +59,10 @@ export default $config({
       environment: {
         VITE_STAGE: $app.stage,
         API_URL: api.url
+      },
+      invalidation: {
+        paths: ["/*"],
+        wait: true
       }
     });
 
@@ -72,6 +76,10 @@ export default $config({
       environment: {
         VITE_STAGE: $app.stage,
         API_URL: api.url
+      },
+      invalidation: {
+        paths: ["/*"],
+        wait: true
       }
     });
 
@@ -85,6 +93,10 @@ export default $config({
       environment: {
         VITE_STAGE: $app.stage,
         API_URL: api.url
+      },
+      invalidation: {
+        paths: ["/*"],
+        wait: true
       }
     });
 
@@ -93,7 +105,7 @@ export default $config({
       frontUrl: frontSite.url,
       docsUrl: docsSite.url,
       apiUrl: api.url,
-      specsBucketUrl: specsBucket.url,
+      specsBucketName: specsBucket.name,
     };
   },
 });

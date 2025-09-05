@@ -33,6 +33,10 @@ if (process.env.API_URL && process.env.API_URL.includes('lambda-url')) {
 console.log(`🚀 Preparing deployment for stage: ${stage}`);
 console.log(`📡 API URL: ${apiBaseUrl}`);
 
+// Generate cache busting hash
+const deployTimestamp = Date.now();
+const cacheHash = deployTimestamp.toString(36);
+
 // Update public-admin API configuration
 const adminAppPath = path.join(__dirname, '..', 'public-admin', 'app.js');
 if (fs.existsSync(adminAppPath)) {
@@ -74,5 +78,39 @@ const envInfo = {
 
 fs.writeFileSync(envInfoPath, JSON.stringify(envInfo, null, 2));
 console.log('✅ Created environment info for docs');
+
+// Add cache busting to HTML files
+function addCacheBusting(htmlPath, jsFile) {
+    if (fs.existsSync(htmlPath)) {
+        let htmlContent = fs.readFileSync(htmlPath, 'utf8');
+        
+        // Replace JS file references to include cache busting
+        const jsPattern = new RegExp(`(src=["']${jsFile})(["'])`, 'g');
+        htmlContent = htmlContent.replace(jsPattern, `$1?v=${cacheHash}$2`);
+        
+        fs.writeFileSync(htmlPath, htmlContent);
+        return true;
+    }
+    return false;
+}
+
+// Update admin panel HTML
+const adminHtmlPath = path.join(__dirname, '..', 'public-admin', 'index.html');
+if (addCacheBusting(adminHtmlPath, 'app.js')) {
+    console.log('✅ Added cache busting to admin panel');
+}
+
+// Update front catalog HTML
+const frontHtmlPath = path.join(__dirname, '..', 'public-front', 'index.html');
+if (addCacheBusting(frontHtmlPath, 'app.js')) {
+    console.log('✅ Added cache busting to front catalog');
+}
+
+// Update docs HTML
+const docsHtmlPath = path.join(__dirname, '..', 'docs', 'index.html');
+if (addCacheBusting(docsHtmlPath, 'swagger-ui-bundle.js') | 
+   addCacheBusting(docsHtmlPath, 'swagger-ui-standalone-preset.js')) {
+    console.log('✅ Added cache busting to docs');
+}
 
 console.log('🎉 Deployment preparation completed');
