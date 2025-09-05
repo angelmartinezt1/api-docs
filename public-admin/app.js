@@ -218,7 +218,7 @@ function renderTable() {
                     <button class="btn btn-sm btn-secondary" onclick="replaceSpec('${service.id}')">
                         Replace JSON
                     </button>
-                    <a href="/specs/${service.spec_filename}" target="_blank" class="btn btn-sm btn-secondary">
+                    <a href="${service.spec_url || API_BASE + '/specs/' + service.spec_filename}" target="_blank" class="btn btn-sm btn-secondary">
                         View JSON
                     </a>
                     ${service.status !== 'deprecated' ? 
