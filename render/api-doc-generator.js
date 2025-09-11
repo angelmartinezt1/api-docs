@@ -7,6 +7,14 @@ class APIDocGenerator {
     constructor() {
         this.config = null;
         this.lastActiveSectionId = null;
+        this.uniqueIdCounter = 0;
+    }
+    
+    /**
+     * Genera un ID único para elementos del DOM
+     */
+    generateUniqueId(prefix = 'id') {
+        return `${prefix}-${++this.uniqueIdCounter}`;
     }
 
     /**
@@ -655,8 +663,10 @@ class APIDocGenerator {
         const paramItem = document.createElement('div');
         paramItem.className = 'parameter-item tree-root';
 
+        const contentId = this.generateUniqueId('params-section');
         const toggle = document.createElement('div');
         toggle.className = 'tree-toggle expanded';
+        toggle.setAttribute('data-target', contentId);
         toggle.innerHTML = `
             <span class="toggle-icon">−</span>
             <span class="toggle-text">Ocultar propiedades</span>
@@ -666,6 +676,7 @@ class APIDocGenerator {
         const content = document.createElement('div');
         content.className = 'tree-content expanded';
         content.style.display = 'block';
+        content.id = contentId;
 
         parameters.forEach(param => {
             const paramDiv = document.createElement('div');
@@ -726,7 +737,7 @@ class APIDocGenerator {
         const paramItem = document.createElement('div');
         paramItem.className = 'parameter-item tree-root';
 
-        const contentId = 'request-body-params-' + Date.now();
+        const contentId = this.generateUniqueId('request-body-params');
         const toggle = document.createElement('div');
         toggle.className = 'tree-toggle expanded';
         toggle.setAttribute('data-target', contentId);
@@ -2173,6 +2184,9 @@ class APIDocGenerator {
      * Inicializa los eventos de la interfaz
      */
     initializeEvents() {
+        // Agregar delegación de eventos como respaldo para toggles
+        this.setupToggleDelegation();
+        
         // Esperar un poco para que el DOM se actualice completamente
         setTimeout(() => {
             this.initializeSidebarEvents();
@@ -2181,6 +2195,56 @@ class APIDocGenerator {
             this.initializeCollapsibleSections();
             this.initializeDynamicContentSystem();
         }, 100);
+    }
+
+    /**
+     * Configura delegación de eventos para toggles como respaldo
+     */
+    setupToggleDelegation() {
+        document.addEventListener('click', (e) => {
+            const toggle = e.target.closest('.tree-toggle');
+            if (!toggle) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('🎯 Delegation: clicked toggle');
+            
+            const targetId = toggle.getAttribute('data-target');
+            let content = null;
+            
+            if (targetId) {
+                content = document.getElementById(targetId);
+            } else {
+                content = toggle.nextElementSibling;
+                if (content && !content.classList.contains('tree-content')) {
+                    content = toggle.parentElement.querySelector('.tree-content');
+                }
+            }
+            
+            const icon = toggle.querySelector('.toggle-icon');
+            const text = toggle.querySelector('.toggle-text');
+            
+            if (content) {
+                const isExpanded = toggle.classList.contains('expanded');
+                
+                if (isExpanded) {
+                    toggle.classList.remove('expanded');
+                    content.classList.remove('expanded');
+                    content.style.display = 'none';
+                    if (icon) icon.textContent = '+';
+                    if (text) text.textContent = 'Mostrar propiedades';
+                    console.log('🎯 Delegation: collapsed');
+                } else {
+                    toggle.classList.add('expanded');
+                    content.classList.add('expanded');
+                    content.style.display = 'block';
+                    if (icon) icon.textContent = '−';
+                    if (text) text.textContent = 'Ocultar propiedades';
+                    console.log('🎯 Delegation: expanded');
+                }
+            }
+        });
     }
 
     /**
@@ -2272,27 +2336,42 @@ class APIDocGenerator {
     initializeTreeToggles() {
         console.log('🌳 Initializing tree toggles...');
         
+        // Remover listeners existentes primero para evitar duplicados
+        const existingToggles = document.querySelectorAll('.tree-toggle[data-initialized]');
+        existingToggles.forEach(toggle => {
+            toggle.replaceWith(toggle.cloneNode(true));
+        });
+        
         const toggles = document.querySelectorAll('.tree-toggle');
         console.log(`📊 Found ${toggles.length} tree toggles`);
         
         toggles.forEach((toggle, index) => {
+            // Marcar como inicializado
+            toggle.setAttribute('data-initialized', 'true');
+            
+            // Debug: log toggle info
+            const targetId = toggle.getAttribute('data-target');
+            const text = toggle.querySelector('.toggle-text')?.textContent;
+            console.log(`🔧 Initializing toggle ${index}: target="${targetId}", text="${text}"`);
+            
             toggle.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                console.log(`🖱️ Clicked tree toggle ${index}`);
+                console.log(`🖱️ Clicked tree toggle ${index} with target: ${targetId}`);
                 
-                const targetId = toggle.getAttribute('data-target');
                 let content = null;
                 
                 if (targetId) {
                     content = document.getElementById(targetId);
+                    console.log(`🎯 Found content by ID: ${content ? 'YES' : 'NO'}`);
                 } else {
                     // Si no hay data-target, buscar el siguiente elemento con tree-content
                     content = toggle.nextElementSibling;
                     if (content && !content.classList.contains('tree-content')) {
                         content = toggle.parentElement.querySelector('.tree-content');
                     }
+                    console.log(`🔍 Found content by fallback: ${content ? 'YES' : 'NO'}`);
                 }
                 
                 const icon = toggle.querySelector('.toggle-icon');
@@ -2300,6 +2379,7 @@ class APIDocGenerator {
                 
                 if (content) {
                     const isExpanded = toggle.classList.contains('expanded');
+                    console.log(`📊 Current state: ${isExpanded ? 'EXPANDED' : 'COLLAPSED'}`);
                     
                     if (isExpanded) {
                         // Collapse
@@ -2319,7 +2399,9 @@ class APIDocGenerator {
                         console.log(`➕ Expanded tree section`);
                     }
                 } else {
-                    console.warn(`⚠️ Tree toggle content not found for:`, targetId);
+                    console.error(`❌ Tree toggle content not found! targetId: ${targetId}`);
+                    console.error(`❌ Toggle element:`, toggle);
+                    console.error(`❌ Parent element:`, toggle.parentElement);
                 }
             });
         });
