@@ -772,38 +772,29 @@ class APIDocGenerator {
 
         Object.entries(schema.properties).forEach(([propName, propSchema]) => {
             const paramDiv = document.createElement('div');
-            paramDiv.className = `parameter-item level-${level}`;
+            paramDiv.className = `parameter-item tree-level-${level}`;
+            
+            const header = document.createElement('div');
+            header.className = 'parameter-header';
             
             const isRequired = schema.required?.includes(propName);
-            const isFile = propSchema.format === 'binary';
-            const hasEnum = propSchema.enum && propSchema.enum.length > 0;
+            const type = propSchema.format === 'binary' ? 'file' : (propSchema.type || 'string');
             
-            // Determinar el tipo de campo
-            let fieldType = propSchema.type || 'string';
-            let fieldIcon = '📝';
-            
-            if (isFile) {
-                fieldType = 'file';
-                fieldIcon = '📎';
-            } else if (hasEnum) {
-                fieldType = 'enum';
-                fieldIcon = '📋';
-            }
-
-            paramDiv.innerHTML = `
-                <div class="parameter-header multipart-field">
-                    <div class="parameter-info">
-                        <span class="parameter-name">${fieldIcon} ${propName}</span>
-                        <span class="parameter-type multipart-${fieldType}">${fieldType.toUpperCase()}${isRequired ? ' *' : ''}</span>
-                        ${isFile ? '<span class="file-badge">📁 Archivo</span>' : ''}
-                    </div>
-                </div>
-                <div class="parameter-description">
-                    ${propSchema.description || 'Sin descripción'}
-                    ${isFile ? '<br><small style="color: #666;">Tamaño máximo: 10MB</small>' : ''}
-                    ${hasEnum ? `<br><small style="color: #666;">Opciones: ${propSchema.enum.join(', ')}</small>` : ''}
-                </div>
+            header.innerHTML = `
+                <span class="parameter-name">${propName}</span>
+                <span class="parameter-type">${type}</span>
+                <span class="parameter-badge ${isRequired ? 'required' : 'optional'}">
+                    ${isRequired ? 'requerido' : 'opcional'}
+                </span>
             `;
+            paramDiv.appendChild(header);
+
+            if (propSchema.description) {
+                const desc = document.createElement('div');
+                desc.className = 'parameter-description';
+                desc.textContent = propSchema.description;
+                paramDiv.appendChild(desc);
+            }
 
             container.appendChild(paramDiv);
         });
