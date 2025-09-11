@@ -235,6 +235,7 @@ class APIDocGenerator {
                 <div class="sidebar-item" data-target="base-url">URL del Servicio</div>
                 <div class="sidebar-item" data-target="sso">SSO - Access Token</div>
                 <div class="sidebar-item" data-target="status-codes">Estatus y códigos de Error</div>
+                <div class="sidebar-item" data-target="cors-diagnostics">Diagnóstico CORS</div>
             </div>
         `;
         sidebar.appendChild(introSection);
@@ -330,6 +331,10 @@ class APIDocGenerator {
         // Códigos de estado
         const statusSection = this.generateStatusCodesSection();
         mainContent.appendChild(statusSection);
+
+        // CORS Diagnostics
+        const corsSection = this.generateCORSDiagnosticsSection();
+        mainContent.appendChild(corsSection);
     }
 
     /**
@@ -1457,6 +1462,280 @@ class APIDocGenerator {
         section.appendChild(clientErrorSection);
 
         return section;
+    }
+
+    /**
+     * Genera la sección de diagnóstico CORS
+     */
+    generateCORSDiagnosticsSection() {
+        const section = document.createElement('section');
+        section.id = 'cors-diagnostics';
+        section.className = 'section';
+        
+        const header = document.createElement('div');
+        header.className = 'section-header';
+        const title = document.createElement('h2');
+        title.className = 'section-title';
+        title.textContent = 'Diagnóstico CORS';
+        header.appendChild(title);
+        section.appendChild(header);
+
+        const description = document.createElement('p');
+        description.className = 'section-description';
+        description.style.marginBottom = '30px';
+        description.textContent = 'Verifica la configuración CORS de todos los endpoints de la API para identificar problemas de acceso desde diferentes dominios.';
+        section.appendChild(description);
+
+        // Botón para ejecutar diagnóstico
+        const diagnosticButton = document.createElement('button');
+        diagnosticButton.className = 'cors-diagnostic-btn';
+        diagnosticButton.textContent = '🔍 Ejecutar Diagnóstico CORS';
+        diagnosticButton.style.cssText = `
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+        `;
+        
+        diagnosticButton.addEventListener('mouseover', () => {
+            diagnosticButton.style.background = '#059669';
+        });
+        
+        diagnosticButton.addEventListener('mouseout', () => {
+            diagnosticButton.style.background = '#10b981';
+        });
+
+        section.appendChild(diagnosticButton);
+
+        // Contenedor de resultados
+        const resultsContainer = document.createElement('div');
+        resultsContainer.id = 'cors-results';
+        resultsContainer.className = 'cors-results-container';
+        resultsContainer.style.display = 'none';
+        section.appendChild(resultsContainer);
+
+        // Event listener para el botón
+        diagnosticButton.addEventListener('click', () => {
+            this.executeCORSDiagnostic(diagnosticButton, resultsContainer);
+        });
+
+        return section;
+    }
+
+    /**
+     * Ejecuta el diagnóstico CORS en todos los endpoints
+     */
+    async executeCORSDiagnostic(button, container) {
+        // Cambiar estado del botón
+        const originalText = button.textContent;
+        button.textContent = '⏳ Ejecutando diagnóstico...';
+        button.disabled = true;
+        button.style.background = '#6b7280';
+
+        // Limpiar resultados anteriores
+        container.innerHTML = '';
+        container.style.display = 'block';
+
+        // Obtener todos los endpoints
+        const endpoints = this.getAllEndpoints();
+        
+        const results = [];
+        
+        // Crear indicador de progreso
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'cors-progress';
+        progressContainer.innerHTML = `
+            <div class="progress-header">
+                <h4>Probando endpoints CORS...</h4>
+                <span class="progress-counter">0 / ${endpoints.length}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+            </div>
+        `;
+        container.appendChild(progressContainer);
+
+        let completed = 0;
+
+        // Probar cada endpoint
+        for (const endpoint of endpoints) {
+            const result = await this.testCORSForEndpoint(endpoint);
+            results.push(result);
+            
+            completed++;
+            const progress = (completed / endpoints.length) * 100;
+            
+            // Actualizar progreso
+            const counter = progressContainer.querySelector('.progress-counter');
+            const fill = progressContainer.querySelector('.progress-fill');
+            counter.textContent = `${completed} / ${endpoints.length}`;
+            fill.style.width = `${progress}%`;
+        }
+
+        // Mostrar resultados
+        this.displayCORSResults(container, results);
+
+        // Restaurar botón
+        button.textContent = originalText;
+        button.disabled = false;
+        button.style.background = '#10b981';
+        
+        // Ocultar progreso
+        progressContainer.style.display = 'none';
+    }
+
+    /**
+     * Obtiene todos los endpoints de la API
+     */
+    getAllEndpoints() {
+        const endpoints = [];
+        const baseUrl = this.config.servers?.[0]?.url || 'https://api.example.com';
+        
+        Object.entries(this.config.paths || {}).forEach(([path, methods]) => {
+            Object.entries(methods).forEach(([method, operation]) => {
+                endpoints.push({
+                    path,
+                    method: method.toUpperCase(),
+                    operation,
+                    url: baseUrl + path
+                });
+            });
+        });
+        
+        return endpoints;
+    }
+
+    /**
+     * Prueba CORS para un endpoint específico
+     */
+    async testCORSForEndpoint(endpoint) {
+        const result = {
+            path: endpoint.path,
+            method: endpoint.method,
+            url: endpoint.url,
+            corsEnabled: false,
+            allowedOrigins: [],
+            allowedMethods: [],
+            allowedHeaders: [],
+            error: null
+        };
+
+        try {
+            // Realizar petición OPTIONS para verificar CORS
+            const response = await fetch(endpoint.url, {
+                method: 'OPTIONS',
+                headers: {
+                    'Origin': window.location.origin,
+                    'Access-Control-Request-Method': endpoint.method,
+                    'Access-Control-Request-Headers': 'Content-Type, Authorization'
+                }
+            });
+
+            // Verificar headers CORS
+            const corsHeaders = {
+                origin: response.headers.get('Access-Control-Allow-Origin'),
+                methods: response.headers.get('Access-Control-Allow-Methods'),
+                headers: response.headers.get('Access-Control-Allow-Headers'),
+                credentials: response.headers.get('Access-Control-Allow-Credentials')
+            };
+
+            if (corsHeaders.origin) {
+                result.corsEnabled = true;
+                result.allowedOrigins = corsHeaders.origin === '*' ? ['*'] : [corsHeaders.origin];
+                result.allowedMethods = corsHeaders.methods ? corsHeaders.methods.split(',').map(m => m.trim()) : [];
+                result.allowedHeaders = corsHeaders.headers ? corsHeaders.headers.split(',').map(h => h.trim()) : [];
+                result.allowCredentials = corsHeaders.credentials === 'true';
+            }
+
+        } catch (error) {
+            result.error = error.message;
+        }
+
+        return result;
+    }
+
+    /**
+     * Muestra los resultados del diagnóstico CORS
+     */
+    displayCORSResults(container, results) {
+        const resultsSection = document.createElement('div');
+        resultsSection.className = 'cors-results';
+
+        // Estadísticas generales
+        const totalEndpoints = results.length;
+        const corsEnabledCount = results.filter(r => r.corsEnabled).length;
+        const errorCount = results.filter(r => r.error).length;
+
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'cors-stats';
+        statsDiv.innerHTML = `
+            <div class="stats-header">
+                <h4>Resumen del Diagnóstico</h4>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number">${totalEndpoints}</span>
+                    <span class="stat-label">Total Endpoints</span>
+                </div>
+                <div class="stat-item success">
+                    <span class="stat-number">${corsEnabledCount}</span>
+                    <span class="stat-label">CORS Habilitado</span>
+                </div>
+                <div class="stat-item error">
+                    <span class="stat-number">${errorCount}</span>
+                    <span class="stat-label">Errores</span>
+                </div>
+            </div>
+        `;
+        resultsSection.appendChild(statsDiv);
+
+        // Resultados detallados
+        const detailsDiv = document.createElement('div');
+        detailsDiv.className = 'cors-details';
+
+        results.forEach(result => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = `cors-item ${result.corsEnabled ? 'cors-enabled' : 'cors-disabled'}`;
+            
+            let statusIcon = result.error ? '❌' : (result.corsEnabled ? '✅' : '⚠️');
+            let statusText = result.error ? 'Error' : (result.corsEnabled ? 'CORS Habilitado' : 'CORS Deshabilitado');
+            
+            itemDiv.innerHTML = `
+                <div class="cors-item-header">
+                    <span class="cors-status">${statusIcon} ${statusText}</span>
+                    <span class="cors-endpoint">${result.method} ${result.path}</span>
+                </div>
+                <div class="cors-item-details">
+                    ${result.corsEnabled ? `
+                        <div class="cors-detail">
+                            <strong>Orígenes permitidos:</strong> ${result.allowedOrigins.join(', ') || 'No especificado'}
+                        </div>
+                        <div class="cors-detail">
+                            <strong>Métodos permitidos:</strong> ${result.allowedMethods.join(', ') || 'No especificado'}
+                        </div>
+                        <div class="cors-detail">
+                            <strong>Headers permitidos:</strong> ${result.allowedHeaders.join(', ') || 'No especificado'}
+                        </div>
+                    ` : ''}
+                    ${result.error ? `
+                        <div class="cors-error">
+                            <strong>Error:</strong> ${result.error}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            detailsDiv.appendChild(itemDiv);
+        });
+
+        resultsSection.appendChild(detailsDiv);
+        container.appendChild(resultsSection);
     }
 
     createStatusCodeItem(statusCode, type) {

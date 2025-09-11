@@ -4353,3 +4353,300 @@ body.dark-mode .manual-token-actions {
         margin-left: 10px !important;
     }
 }
+
+/* CORS Diagnostics Section Styles */
+.cors-diagnostic-btn:hover {
+    background: #059669 !important;
+    transform: translateY(-1px);
+}
+
+.cors-diagnostic-btn:disabled {
+    background: #6b7280 !important;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.cors-results-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+
+body.dark-mode .cors-results-container {
+    border-color: #374151;
+    background: #1f2937;
+}
+
+/* Progress Bar */
+.cors-progress {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body.dark-mode .cors-progress {
+    border-bottom-color: #374151;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.progress-header h4 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 16px;
+}
+
+body.dark-mode .progress-header h4 {
+    color: #e5e7eb;
+}
+
+.progress-counter {
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+body.dark-mode .progress-counter {
+    color: #9ca3af;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+body.dark-mode .progress-bar {
+    background: #374151;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+/* Stats Grid */
+.cors-stats {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body.dark-mode .cors-stats {
+    border-bottom-color: #374151;
+}
+
+.stats-header h4 {
+    margin: 0 0 16px 0;
+    color: #1f2937;
+    font-size: 18px;
+}
+
+body.dark-mode .stats-header h4 {
+    color: #e5e7eb;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+body.dark-mode .stat-item {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+.stat-item.success {
+    background: #ecfdf5;
+    border-color: #10b981;
+}
+
+body.dark-mode .stat-item.success {
+    background: #064e3b;
+    border-color: #10b981;
+}
+
+.stat-item.error {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+
+body.dark-mode .stat-item.error {
+    background: #7f1d1d;
+    border-color: #ef4444;
+}
+
+.stat-number {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+body.dark-mode .stat-number {
+    color: #e5e7eb;
+}
+
+.stat-item.success .stat-number {
+    color: #059669;
+}
+
+.stat-item.error .stat-number {
+    color: #dc2626;
+}
+
+.stat-label {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+body.dark-mode .stat-label {
+    color: #9ca3af;
+}
+
+/* CORS Details */
+.cors-details {
+    padding: 20px;
+}
+
+.cors-item {
+    margin-bottom: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+
+body.dark-mode .cors-item {
+    border-color: #374151;
+    background: #1f2937;
+}
+
+.cors-item.cors-enabled {
+    border-left: 4px solid #10b981;
+}
+
+.cors-item.cors-disabled {
+    border-left: 4px solid #f59e0b;
+}
+
+.cors-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body.dark-mode .cors-item-header {
+    background: #374151;
+    border-bottom-color: #4b5563;
+}
+
+.cors-status {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.cors-item.cors-enabled .cors-status {
+    color: #059669;
+}
+
+.cors-item.cors-disabled .cors-status {
+    color: #d97706;
+}
+
+.cors-endpoint {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+body.dark-mode .cors-endpoint {
+    color: #9ca3af;
+    background: #4b5563;
+}
+
+.cors-item-details {
+    padding: 16px;
+}
+
+.cors-detail {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #374151;
+}
+
+body.dark-mode .cors-detail {
+    color: #d1d5db;
+}
+
+.cors-detail strong {
+    color: #1f2937;
+}
+
+body.dark-mode .cors-detail strong {
+    color: #e5e7eb;
+}
+
+.cors-error {
+    color: #dc2626;
+    background: #fef2f2;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+body.dark-mode .cors-error {
+    color: #fca5a5;
+    background: #7f1d1d;
+}
+
+/* Mobile Responsive for CORS */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .cors-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .cors-endpoint {
+        font-size: 11px;
+    }
+    
+    .cors-diagnostic-btn {
+        width: 100%;
+        font-size: 16px !important;
+        padding: 14px 20px !important;
+    }
+}
