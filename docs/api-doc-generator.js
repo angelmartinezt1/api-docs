@@ -18,6 +18,343 @@ class APIDocGenerator {
     }
 
     /**
+     * Genera una colección de Postman desde la configuración de la API
+     */
+    generatePostmanCollection() {
+        if (!this.config) {
+            console.error('No hay configuración de API disponible');
+            return null;
+        }
+
+        const collection = {
+            info: {
+                name: this.config.info?.title || 'API Collection',
+                description: this.config.info?.description || 'Generated from API documentation',
+                version: this.config.info?.version || '1.0.0',
+                schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
+            },
+            item: [],
+            variable: [],
+            auth: null
+        };
+
+        // Agregar variables globales
+        if (this.config.servers && this.config.servers.length > 0) {
+            collection.variable.push({
+                key: 'baseUrl',
+                value: this.config.servers[0].url,
+                type: 'string'
+            });
+        }
+
+        // Configurar autenticación si existe
+        if (this.config.security && this.config.security.length > 0) {
+            const securityScheme = this.config.security[0];
+            if (securityScheme.type === 'http' && securityScheme.scheme === 'bearer') {
+                collection.auth = {
+                    type: 'bearer',
+                    bearer: [{
+                        key: 'token',
+                        value: '{{access_token}}',
+                        type: 'string'
+                    }]
+                };
+                collection.variable.push({
+                    key: 'access_token',
+                    value: 'YOUR_ACCESS_TOKEN_HERE',
+                    type: 'string'
+                });
+            }
+        }
+
+        // Agrupar endpoints por tags
+        const groupedEndpoints = this.groupEndpointsByTags();
+
+        Object.entries(groupedEndpoints).forEach(([tag, endpoints]) => {
+            const folder = {
+                name: tag,
+                item: []
+            };
+
+            endpoints.forEach(({ path, method, operation }) => {
+                const request = this.generatePostmanRequest(path, method, operation);
+                folder.item.push({
+                    name: operation.summary || `${method.toUpperCase()} ${path}`,
+                    request: request,
+                    response: []
+                });
+            });
+
+            collection.item.push(folder);
+        });
+
+        return collection;
+    }
+
+    /**
+     * Genera un request de Postman para un endpoint específico
+     */
+    generatePostmanRequest(path, method, operation) {
+        const request = {
+            method: method.toUpperCase(),
+            header: [],
+            url: {
+                raw: '{{baseUrl}}' + path,
+                host: ['{{baseUrl}}'],
+                path: path.split('/').filter(p => p)
+            }
+        };
+
+        // Agregar parámetros de query
+        if (operation.parameters) {
+            const queryParams = operation.parameters.filter(p => p.in === 'query');
+            if (queryParams.length > 0) {
+                request.url.query = queryParams.map(param => ({
+                    key: param.name,
+                    value: param.example || (param.schema?.example) || '',
+                    description: param.description || '',
+                    disabled: !param.required
+                }));
+            }
+
+            // Agregar parámetros de path
+            const pathParams = operation.parameters.filter(p => p.in === 'path');
+            if (pathParams.length > 0) {
+                request.url.variable = pathParams.map(param => ({
+                    key: param.name,
+                    value: param.example || (param.schema?.example) || `{${param.name}}`,
+                    description: param.description || ''
+                }));
+            }
+
+            // Agregar headers
+            const headerParams = operation.parameters.filter(p => p.in === 'header');
+            headerParams.forEach(param => {
+                request.header.push({
+                    key: param.name,
+                    value: param.example || (param.schema?.example) || '',
+                    description: param.description || ''
+                });
+            });
+        }
+
+        // Configurar request body
+        if (operation.requestBody && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+            const contentTypes = Object.keys(operation.requestBody.content || {});
+            const isMultipart = contentTypes.some(type => type.includes('multipart/form-data'));
+            const isJson = contentTypes.some(type => type.includes('application/json'));
+
+            if (isMultipart) {
+                request.header.push({
+                    key: 'Content-Type',
+                    value: 'multipart/form-data'
+                });
+
+                const schema = operation.requestBody.content['multipart/form-data']?.schema;
+                if (schema && schema.properties) {
+                    request.body = {
+                        mode: 'formdata',
+                        formdata: []
+                    };
+
+                    Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                        const formField = {
+                            key: fieldName,
+                            description: fieldSchema.description || '',
+                            type: fieldSchema.format === 'binary' ? 'file' : 'text'
+                        };
+
+                        if (fieldSchema.format === 'binary') {
+                            formField.src = [];
+                        } else {
+                            if (fieldSchema.enum && fieldSchema.enum.length > 0) {
+                                formField.value = fieldSchema.enum[0];
+                            } else {
+                                formField.value = fieldSchema.example || `example_${fieldName}`;
+                            }
+                        }
+
+                        request.body.formdata.push(formField);
+                    });
+                }
+            } else if (isJson) {
+                request.header.push({
+                    key: 'Content-Type',
+                    value: 'application/json'
+                });
+
+                const schema = operation.requestBody.content['application/json']?.schema;
+                const exampleBody = this.generateExampleFromSchema(schema);
+                
+                request.body = {
+                    mode: 'raw',
+                    raw: JSON.stringify(exampleBody, null, 2)
+                };
+            }
+        }
+
+        return request;
+    }
+
+    /**
+     * Genera un ejemplo desde un schema
+     */
+    generateExampleFromSchema(schema) {
+        if (!schema || !schema.properties) {
+            return {};
+        }
+
+        const example = {};
+        Object.entries(schema.properties).forEach(([propName, propSchema]) => {
+            if (propSchema.example !== undefined) {
+                example[propName] = propSchema.example;
+            } else if (propSchema.enum && propSchema.enum.length > 0) {
+                example[propName] = propSchema.enum[0];
+            } else {
+                switch (propSchema.type) {
+                    case 'string':
+                        example[propName] = `example_${propName}`;
+                        break;
+                    case 'number':
+                    case 'integer':
+                        example[propName] = 1;
+                        break;
+                    case 'boolean':
+                        example[propName] = true;
+                        break;
+                    case 'array':
+                        example[propName] = [];
+                        break;
+                    case 'object':
+                        example[propName] = this.generateExampleFromSchema(propSchema);
+                        break;
+                    default:
+                        example[propName] = `example_${propName}`;
+                }
+            }
+        });
+
+        return example;
+    }
+
+    /**
+     * Descarga la colección de Postman como archivo JSON
+     */
+    downloadPostmanCollection() {
+        const collection = this.generatePostmanCollection();
+        if (!collection) {
+            alert('Error: No se pudo generar la colección de Postman');
+            return;
+        }
+
+        const jsonString = JSON.stringify(collection, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${collection.info.name.replace(/\s+/g, '_')}_Postman_Collection.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        console.log('✅ Colección de Postman descargada:', link.download);
+    }
+
+    /**
+     * Genera la sección de descarga de Postman
+     */
+    generatePostmanSection() {
+        const section = document.createElement('section');
+        section.id = 'postman-collection';
+        section.className = 'section';
+        
+        const header = document.createElement('div');
+        header.className = 'section-header';
+        
+        const title = document.createElement('h2');
+        title.className = 'section-title';
+        title.textContent = '📦 Importar en Postman';
+        header.appendChild(title);
+        section.appendChild(header);
+        
+        const description = document.createElement('p');
+        description.style.marginBottom = '20px';
+        description.innerHTML = `Descarga la colección completa de endpoints para importar directamente en <strong>Postman</strong>. 
+        Incluye todos los endpoints, parámetros, headers y ejemplos configurados automáticamente.`;
+        section.appendChild(description);
+        
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'postman-button-container';
+        buttonContainer.style.cssText = `
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 20px 0;
+        `;
+        
+        const downloadButton = document.createElement('button');
+        downloadButton.className = 'postman-download-button';
+        downloadButton.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                <path d="M12 16l4-4h-3V4h-2v8H8l4 4zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+            Descargar Colección JSON
+        `;
+        downloadButton.style.cssText = `
+            background: #FF6C37;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+        `;
+        
+        downloadButton.addEventListener('mouseenter', () => {
+            downloadButton.style.background = '#e55a2b';
+            downloadButton.style.transform = 'translateY(-1px)';
+            downloadButton.style.boxShadow = '0 4px 12px rgba(255, 108, 55, 0.3)';
+        });
+        
+        downloadButton.addEventListener('mouseleave', () => {
+            downloadButton.style.background = '#FF6C37';
+            downloadButton.style.transform = 'translateY(0)';
+            downloadButton.style.boxShadow = 'none';
+        });
+        
+        downloadButton.addEventListener('click', () => {
+            this.downloadPostmanCollection();
+        });
+        
+        buttonContainer.appendChild(downloadButton);
+        
+        const infoText = document.createElement('div');
+        infoText.className = 'postman-info';
+        infoText.style.cssText = `
+            font-size: 12px;
+            color: #666;
+            margin-left: 10px;
+        `;
+        infoText.innerHTML = `
+            💡 <strong>Cómo importar:</strong><br>
+            1. Abre Postman → Import → Upload Files<br>
+            2. Selecciona el archivo JSON descargado<br>
+            3. ¡Todos los endpoints estarán listos para usar!
+        `;
+        
+        buttonContainer.appendChild(infoText);
+        section.appendChild(buttonContainer);
+        
+        return section;
+    }
+
+    /**
      * Genera la documentación a partir de un JSON
      */
     generateFromJSON(jsonConfig) {
@@ -239,6 +576,7 @@ class APIDocGenerator {
             <div class="sidebar-section-title">Inicio</div>
             <div class="sidebar-items">
                 <div class="sidebar-item" data-target="introduction">Introducción</div>
+                <div class="sidebar-item" data-target="postman-collection">📦 Importar en Postman</div>
                 <div class="sidebar-item" data-target="authentication">Autenticación</div>
                 <div class="sidebar-item" data-target="base-url">URL del Servicio</div>
                 <div class="sidebar-item" data-target="sso">SSO - Access Token</div>
@@ -318,6 +656,10 @@ class APIDocGenerator {
         const introSection = this.createSection('introduction', 'Introducción', 
             this.config.info?.description || 'Documentación de la API');
         mainContent.appendChild(introSection);
+
+        // Botón de descarga de Postman
+        const postmanSection = this.generatePostmanSection();
+        mainContent.appendChild(postmanSection);
 
         // Autenticación
         const authSection = this.createSection('authentication', 'Autenticación', 
