@@ -465,15 +465,39 @@ class APIDocGenerator {
         const header = document.querySelector('.header .logo');
         if (header && this.config.info) {
             header.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="27" height="25" fill="none" viewBox="0 0 28 26" class="api-logo-svg" style="min-height: 20px; max-width: 20px; flex-shrink: 0;margin-right: 10px;">
-                    <path fill="#D93A26" d="M18.69 10.828h2.766c.105 0 .175 0 .245.07V24.62c0 .595.56 1.015 1.155.84 1.296-.525 2.976-1.19 4.201-1.75.21-.105.49-.21.49-.63V2.496a.867.867 0 0 0-.875-.875h-2.065c-.385 0-.7.245-.84.595-.84 2.346-2.45 4.096-4.866 4.516-.105 0-.21.035-.35.035-.455.07-.77.42-.77.875v2.275c0 .49.385.876.875.876z"></path>
-                    <path fill="#D93A26" d="M22.331.71c-.105-.105-.28-.21-.455-.21H1.608C.978.5.452.955.452 1.55v3.08c0 .736.14 1.086 1.05 1.086H8.26c.175 0 .315.14.315.315v17.013c0 .315.21.56.525.7.595.245 2.66 1.26 3.36 1.645s1.926-.28 1.926-1.26V6.38c-.035-.245 0-.49.245-.595h2.38c4.83-.455 5.321-4.2 5.356-4.62V.99c0-.105 0-.175-.105-.245z"></path>
-                </svg>
-                <span class="api-title">${this.config.info.title || 'dev docs'}</span>
-                <button id="export-llm-btn" class="export-ai-btn" style="margin-left:18px;padding:6px 14px;border-radius:5px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;font-weight:bold;cursor:pointer;font-size:1em;">
-                    <span class="export-btn-text">Descargar</span>
-                    <span class="export-btn-icon" style="display: none;">⬇️</span>
-                </button>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="display: flex; align-items: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="27" height="25" fill="none" viewBox="0 0 28 26" class="api-logo-svg" style="min-height: 20px; max-width: 20px; flex-shrink: 0;margin-right: 10px;">
+                            <path fill="#D93A26" d="M18.69 10.828h2.766c.105 0 .175 0 .245.07V24.62c0 .595.56 1.015 1.155.84 1.296-.525 2.976-1.19 4.201-1.75.21-.105.49-.21.49-.63V2.496a.867.867 0 0 0-.875-.875h-2.065c-.385 0-.7.245-.84.595-.84 2.346-2.45 4.096-4.866 4.516-.105 0-.21.035-.35.035-.455.07-.77.42-.77.875v2.275c0 .49.385.876.875.876z"></path>
+                            <path fill="#D93A26" d="M22.331.71c-.105-.105-.28-.21-.455-.21H1.608C.978.5.452.955.452 1.55v3.08c0 .736.14 1.086 1.05 1.086H8.26c.175 0 .315.14.315.315v17.013c0 .315.21.56.525.7.595.245 2.66 1.26 3.36 1.645s1.926-.28 1.926-1.26V6.38c-.035-.245 0-.49.245-.595h2.38c4.83-.455 5.321-4.2 5.356-4.62V.99c0-.105 0-.175-.105-.245z"></path>
+                        </svg>
+                        <span class="api-title">${this.config.info.title || 'dev docs'}</span>
+                    </div>
+                    
+                    <div class="api-selector-container" style="position: relative;">
+                        <select id="api-selector" class="api-selector" style="
+                            padding: 6px 30px 6px 10px;
+                            border: 1px solid #e5e7eb;
+                            border-radius: 5px;
+                            background: white;
+                            color: #374151;
+                            font-size: 14px;
+                            cursor: pointer;
+                            appearance: none;
+                            background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xIDFMNiA2TDExIDEiIHN0cm9rZT0iIzM3NDE1MSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+');
+                            background-repeat: no-repeat;
+                            background-position: right 8px center;
+                            min-width: 200px;
+                        ">
+                            <option value="">🔄 Cargando APIs...</option>
+                        </select>
+                    </div>
+                    
+                    <button id="export-llm-btn" class="export-ai-btn" style="padding:6px 14px;border-radius:5px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;font-weight:bold;cursor:pointer;font-size:1em;">
+                        <span class="export-btn-text">Descargar</span>
+                        <span class="export-btn-icon" style="display: none;">⬇️</span>
+                    </button>
+                </div>
             `;
         }
 
@@ -527,6 +551,202 @@ class APIDocGenerator {
                 });
             }
         }, 200);
+        
+        // Cargar lista de APIs disponibles
+        this.loadAvailableAPIs();
+    }
+
+    /**
+     * Carga la lista de APIs disponibles desde el endpoint
+     */
+    async loadAvailableAPIs() {
+        try {
+            const response = await fetch('https://3we0wv453m.execute-api.us-east-1.amazonaws.com/dev/api/microservices', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('📡 APIs disponibles cargadas:', data);
+            
+            // Poblar el dropdown
+            this.populateAPISelector(data);
+            
+        } catch (error) {
+            console.error('❌ Error cargando APIs disponibles:', error);
+            this.handleAPILoadError();
+        }
+    }
+
+    /**
+     * Pobla el selector de APIs con los datos obtenidos
+     */
+    populateAPISelector(apiResponse) {
+        const selector = document.getElementById('api-selector');
+        if (!selector || !apiResponse.data) return;
+
+        // Limpiar opciones existentes
+        selector.innerHTML = '';
+        
+        // Opción por defecto
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '📚 Seleccionar API...';
+        selector.appendChild(defaultOption);
+
+        // Agrupar por api_type
+        const groupedAPIs = {};
+        apiResponse.data.forEach(api => {
+            const type = api.api_type || 'Sin Categoría';
+            if (!groupedAPIs[type]) {
+                groupedAPIs[type] = [];
+            }
+            groupedAPIs[type].push(api);
+        });
+
+        // Crear grupos en el select
+        Object.entries(groupedAPIs).forEach(([type, apis]) => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = `${this.getAPITypeIcon(type)} ${type}`;
+            
+            apis.forEach(api => {
+                const option = document.createElement('option');
+                option.value = api.spec_filename;
+                option.textContent = `${api.name} (v${api.version})`;
+                option.setAttribute('data-api-info', JSON.stringify(api));
+                optgroup.appendChild(option);
+            });
+            
+            selector.appendChild(optgroup);
+        });
+
+        // Agregar event listener
+        selector.addEventListener('change', (e) => {
+            this.handleAPISelection(e.target.value, e.target.options[e.target.selectedIndex]);
+        });
+    }
+
+    /**
+     * Obtiene el ícono apropiado para cada tipo de API
+     */
+    getAPITypeIcon(type) {
+        const icons = {
+            'Admin': '⚙️',
+            'Portal': '🌐',
+            'Webhook': '🔗',
+            'Integraciones': '🔄',
+            'Sin Categoría': '📄'
+        };
+        return icons[type] || '📄';
+    }
+
+    /**
+     * Maneja la selección de una API diferente
+     */
+    async handleAPISelection(specFilename, selectedOption) {
+        if (!specFilename) return;
+
+        try {
+            const apiInfo = JSON.parse(selectedOption.getAttribute('data-api-info') || '{}');
+            console.log('🔄 Cambiando a API:', apiInfo);
+
+            // Mostrar indicador de carga
+            this.showLoadingIndicator('Cargando documentación...', `Obteniendo: ${apiInfo.name}`);
+
+            // Usar spec_url directamente del response de la API
+            const specUrl = apiInfo.spec_url;
+            
+            if (!specUrl) {
+                throw new Error('URL de especificación no encontrada');
+            }
+            
+            // Cargar nueva documentación
+            const response = await fetch(specUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const newConfig = await response.json();
+            
+            // Actualizar URL del navegador con parámetro ?spec
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('spec', specUrl);
+            window.history.pushState({}, '', newUrl);
+            
+            // Actualizar configuración y regenerar documentación
+            this.config = newConfig;
+            this.generateDocumentation();
+            
+            // Ocultar indicador de carga
+            setTimeout(() => {
+                this.hideLoadingIndicator();
+            }, 500);
+            
+            console.log('✅ Documentación cambiada exitosamente:', apiInfo.name);
+            
+        } catch (error) {
+            console.error('❌ Error cargando nueva API:', error);
+            alert(`Error cargando la documentación: ${error.message}`);
+            
+            // Resetear selector
+            document.getElementById('api-selector').selectedIndex = 0;
+        }
+    }
+
+    /**
+     * Maneja errores al cargar la lista de APIs
+     */
+    handleAPILoadError() {
+        const selector = document.getElementById('api-selector');
+        if (selector) {
+            selector.innerHTML = `
+                <option value="">❌ Error cargando APIs</option>
+                <option value="" disabled>Verifique la conexión</option>
+            `;
+            selector.disabled = true;
+        }
+    }
+
+    /**
+     * Muestra indicador de carga (reutiliza el existente)
+     */
+    showLoadingIndicator(message, submessage) {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const mainContainer = document.getElementById('mainContainer');
+        const errorScreen = document.getElementById('errorScreen');
+        
+        if (loadingScreen && mainContainer) {
+            loadingScreen.style.display = 'flex';
+            mainContainer.style.display = 'none';
+            errorScreen.style.display = 'none';
+            
+            const loadingText = document.querySelector('.loading-text');
+            const loadingSubtext = document.getElementById('loadingSubtext');
+            
+            if (loadingText) loadingText.textContent = message;
+            if (loadingSubtext) loadingSubtext.textContent = submessage;
+        }
+    }
+
+    /**
+     * Oculta indicador de carga y muestra contenido
+     */
+    hideLoadingIndicator() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const mainContainer = document.getElementById('mainContainer');
+        const errorScreen = document.getElementById('errorScreen');
+        
+        if (loadingScreen && mainContainer) {
+            loadingScreen.style.display = 'none';
+            errorScreen.style.display = 'none';
+            mainContainer.style.display = 'block';
+        }
     }
 
     /**
