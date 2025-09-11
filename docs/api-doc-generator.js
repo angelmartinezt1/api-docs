@@ -1562,6 +1562,14 @@ class APIDocGenerator {
      * Genera ejemplo de respuesta
      */
     generateResponseExample(operationId, operation) {
+        // Verificar si hay ejemplos definidos en la operación
+        if (!this.hasResponseExamples(operation)) {
+            // Si no hay ejemplos, retornar un div vacío o null
+            const emptySection = document.createElement('div');
+            emptySection.style.display = 'none';
+            return emptySection;
+        }
+
         const responseSection = document.createElement('div');
         responseSection.className = 'response-section';
         responseSection.id = `${operationId}-response`;
@@ -1592,6 +1600,37 @@ class APIDocGenerator {
 
         responseSection.appendChild(content);
         return responseSection;
+    }
+
+    /**
+     * Verifica si la operación tiene ejemplos de respuesta definidos
+     */
+    hasResponseExamples(operation) {
+        if (!operation || !operation.responses) {
+            return false;
+        }
+
+        // Buscar ejemplos en todas las respuestas
+        for (const [statusCode, response] of Object.entries(operation.responses)) {
+            if (response.content) {
+                for (const [mediaType, mediaContent] of Object.entries(response.content)) {
+                    // Verificar si hay ejemplos múltiples
+                    if (mediaContent.examples && Object.keys(mediaContent.examples).length > 0) {
+                        return true;
+                    }
+                    // Verificar si hay un ejemplo singular
+                    if (mediaContent.example !== undefined) {
+                        return true;
+                    }
+                    // Verificar si hay ejemplos en el schema
+                    if (mediaContent.schema && mediaContent.schema.example !== undefined) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
