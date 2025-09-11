@@ -4330,3 +4330,26 @@ body.dark-mode .manual-token-actions {
         width: 100%;
     }
 }
+
+/* Mobile responsive - Hide API title and show icon for export button */
+@media (max-width: 768px) {
+    /* Hide API title in mobile */
+    .api-title {
+        display: none;
+    }
+    
+    /* Show icon instead of text for export button */
+    .export-ai-btn .export-btn-text {
+        display: none;
+    }
+    
+    .export-ai-btn .export-btn-icon {
+        display: inline !important;
+    }
+    
+    /* Adjust button padding for icon only */
+    .export-ai-btn {
+        padding: 8px 10px !important;
+        margin-left: 10px !important;
+    }
+}

@@ -120,12 +120,15 @@ class APIDocGenerator {
         const header = document.querySelector('.header .logo');
         if (header && this.config.info) {
             header.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="27" height="25" fill="none" viewBox="0 0 28 26" class="Navbar-module_logo-image__ml5B6" style="min-height: 20px; max-width: 20px; flex-shrink: 0;margin-right: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="27" height="25" fill="none" viewBox="0 0 28 26" class="api-logo-svg" style="min-height: 20px; max-width: 20px; flex-shrink: 0;margin-right: 10px;">
                     <path fill="#D93A26" d="M18.69 10.828h2.766c.105 0 .175 0 .245.07V24.62c0 .595.56 1.015 1.155.84 1.296-.525 2.976-1.19 4.201-1.75.21-.105.49-.21.49-.63V2.496a.867.867 0 0 0-.875-.875h-2.065c-.385 0-.7.245-.84.595-.84 2.346-2.45 4.096-4.866 4.516-.105 0-.21.035-.35.035-.455.07-.77.42-.77.875v2.275c0 .49.385.876.875.876z"></path>
                     <path fill="#D93A26" d="M22.331.71c-.105-.105-.28-.21-.455-.21H1.608C.978.5.452.955.452 1.55v3.08c0 .736.14 1.086 1.05 1.086H8.26c.175 0 .315.14.315.315v17.013c0 .315.21.56.525.7.595.245 2.66 1.26 3.36 1.645s1.926-.28 1.926-1.26V6.38c-.035-.245 0-.49.245-.595h2.38c4.83-.455 5.321-4.2 5.356-4.62V.99c0-.105 0-.175-.105-.245z"></path>
                 </svg>
-                ${this.config.info.title || 'dev docs'}
-                <button id="export-llm-btn" style="margin-left:18px;padding:6px 14px;border-radius:5px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;font-weight:bold;cursor:pointer;font-size:1em;">Exportar para IA</button>
+                <span class="api-title">${this.config.info.title || 'dev docs'}</span>
+                <button id="export-llm-btn" class="export-ai-btn" style="margin-left:18px;padding:6px 14px;border-radius:5px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;font-weight:bold;cursor:pointer;font-size:1em;">
+                    <span class="export-btn-text">Exportar para IA</span>
+                    <span class="export-btn-icon" style="display: none;">📋</span>
+                </button>
             `;
         }
 
@@ -148,9 +151,20 @@ class APIDocGenerator {
                     }
                     // Copiar al portapapeles
                     navigator.clipboard.writeText(docText).then(() => {
-                        // Notificación breve
-                        btn.textContent = '¡Copiado!';
-                        setTimeout(() => { btn.textContent = 'Exportar para IA'; }, 1200);
+                        const textSpan = btn.querySelector('.export-btn-text');
+                        const iconSpan = btn.querySelector('.export-btn-icon');
+                        
+                        // Mostrar "Copiado ✓" temporalmente
+                        if (textSpan) textSpan.textContent = 'Copiado ✓';
+                        if (iconSpan) iconSpan.textContent = '✓';
+                        btn.style.background = '#16a34a';
+                        
+                        setTimeout(() => {
+                            // Restaurar contenido original
+                            if (textSpan) textSpan.textContent = 'Exportar para IA';
+                            if (iconSpan) iconSpan.textContent = '📋';
+                            btn.style.background = '#2563eb';
+                        }, 1200);
                     });
                 });
             }
