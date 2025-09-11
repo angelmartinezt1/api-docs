@@ -626,6 +626,21 @@ class APIDocGenerator {
             selector.appendChild(optgroup);
         });
 
+        // Restaurar selección desde sessionStorage
+        const savedSelection = sessionStorage.getItem('selectedAPI');
+        if (savedSelection) {
+            try {
+                const selection = JSON.parse(savedSelection);
+                const matchingOption = selector.querySelector(`option[value="${selection.filename}"]`);
+                if (matchingOption) {
+                    selector.value = selection.filename;
+                    console.log('✅ Selección restaurada:', selection.apiInfo.name);
+                }
+            } catch (error) {
+                console.error('Error restaurando selección:', error);
+            }
+        }
+
         // Agregar event listener
         selector.addEventListener('change', (e) => {
             this.handleAPISelection(e.target.value, e.target.options[e.target.selectedIndex]);
@@ -656,8 +671,11 @@ class APIDocGenerator {
             const apiInfo = JSON.parse(selectedOption.getAttribute('data-api-info') || '{}');
             console.log('🔄 Cambiando a API:', apiInfo);
 
-            // Mostrar indicador de carga
-            this.showLoadingIndicator('Cargando documentación...', `Obteniendo: ${apiInfo.name}`);
+            // Guardar selección en sessionStorage
+            sessionStorage.setItem('selectedAPI', JSON.stringify({
+                filename: specFilename,
+                apiInfo: apiInfo
+            }));
 
             // Usar spec_url directamente del response de la API
             const specUrl = apiInfo.spec_url;
@@ -666,36 +684,14 @@ class APIDocGenerator {
                 throw new Error('URL de especificación no encontrada');
             }
             
-            // Cargar nueva documentación
-            const response = await fetch(specUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const newConfig = await response.json();
-            
             // Actualizar URL del navegador con parámetro ?spec
             const newUrl = new URL(window.location);
             newUrl.searchParams.set('spec', specUrl);
-            window.history.pushState({}, '', newUrl);
-            
-            // Actualizar configuración y regenerar documentación
-            this.config = newConfig;
-            this.generateDocumentation();
-            
-            // Ocultar indicador de carga
-            setTimeout(() => {
-                this.hideLoadingIndicator();
-            }, 500);
-            
-            console.log('✅ Documentación cambiada exitosamente:', apiInfo.name);
+            window.location.href = newUrl.toString();
             
         } catch (error) {
             console.error('❌ Error cargando nueva API:', error);
             alert(`Error cargando la documentación: ${error.message}`);
-            
-            // Resetear selector
-            document.getElementById('api-selector').selectedIndex = 0;
         }
     }
 
@@ -713,41 +709,6 @@ class APIDocGenerator {
         }
     }
 
-    /**
-     * Muestra indicador de carga (reutiliza el existente)
-     */
-    showLoadingIndicator(message, submessage) {
-        const loadingScreen = document.getElementById('loadingScreen');
-        const mainContainer = document.getElementById('mainContainer');
-        const errorScreen = document.getElementById('errorScreen');
-        
-        if (loadingScreen && mainContainer) {
-            loadingScreen.style.display = 'flex';
-            mainContainer.style.display = 'none';
-            errorScreen.style.display = 'none';
-            
-            const loadingText = document.querySelector('.loading-text');
-            const loadingSubtext = document.getElementById('loadingSubtext');
-            
-            if (loadingText) loadingText.textContent = message;
-            if (loadingSubtext) loadingSubtext.textContent = submessage;
-        }
-    }
-
-    /**
-     * Oculta indicador de carga y muestra contenido
-     */
-    hideLoadingIndicator() {
-        const loadingScreen = document.getElementById('loadingScreen');
-        const mainContainer = document.getElementById('mainContainer');
-        const errorScreen = document.getElementById('errorScreen');
-        
-        if (loadingScreen && mainContainer) {
-            loadingScreen.style.display = 'none';
-            errorScreen.style.display = 'none';
-            mainContainer.style.display = 'block';
-        }
-    }
 
     /**
      * Genera el sidebar de navegación
