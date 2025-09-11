@@ -1,0 +1,582 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "T1 Docs API",
+    "description": "Internal microservices documentation system for enterprise SaaS development team. Allows developers to register microservice documentation and provides a catalog for browsing services.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Development Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://3we0wv453m.execute-api.us-east-1.amazonaws.com/dev",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/api/microservices": {
+      "get": {
+        "tags": [
+          "Microservices"
+        ],
+        "summary": "Get all microservices",
+        "description": "Retrieve a list of microservices with optional filtering",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search query for name or description",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api_type",
+            "in": "query",
+            "description": "Filter by API type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Admin",
+                "Portal",
+                "Webhook",
+                "Integraciones"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "active",
+                "deprecated"
+              ]
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Filter by tags (comma-separated)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MicroservicesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Microservices"
+        ],
+        "summary": "Create a new microservice",
+        "description": "Create a new microservice with JSON specification upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Unique microservice name"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Service description"
+                  },
+                  "owner_dev_name": {
+                    "type": "string",
+                    "description": "Developer/team owner"
+                  },
+                  "version": {
+                    "type": "string",
+                    "description": "Service version"
+                  },
+                  "api_type": {
+                    "type": "string",
+                    "enum": [
+                      "Admin",
+                      "Portal",
+                      "Webhook",
+                      "Integraciones"
+                    ],
+                    "description": "API type classification"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "active",
+                      "deprecated"
+                    ],
+                    "description": "Service status"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags"
+                  },
+                  "spec_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JSON specification file (max 10MB)"
+                  }
+                },
+                "required": [
+                  "name",
+                  "description",
+                  "owner_dev_name",
+                  "version",
+                  "api_type",
+                  "status",
+                  "spec_file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Microservice created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/microservices/{id}": {
+      "put": {
+        "tags": [
+          "Microservices"
+        ],
+        "summary": "Update microservice metadata",
+        "description": "Update microservice metadata (excluding spec file)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Microservice ULID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MicroserviceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Microservice updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Microservice not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Microservices"
+        ],
+        "summary": "Delete microservice",
+        "description": "Soft delete microservice (sets status to deprecated)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Microservice ULID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Microservice deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Microservice not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/microservices/{id}/spec": {
+      "put": {
+        "tags": [
+          "Microservices"
+        ],
+        "summary": "Update microservice specification",
+        "description": "Replace the JSON specification file for a microservice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Microservice ULID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "spec_file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "New JSON specification file (max 10MB)"
+                  }
+                },
+                "required": [
+                  "spec_file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Specification updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Microservice not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/specs/{filename}": {
+      "get": {
+        "tags": [
+          "Specifications"
+        ],
+        "summary": "Get specification file",
+        "description": "Serve JSON specification files from S3 or local storage",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "Specification filename",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Specification file content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "JSON specification content"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "description": "Check API health status",
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "Operation success status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Response message"
+          },
+          "data": {
+            "description": "Response data (optional)"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ]
+      },
+      "Microservice": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "ULID identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Unique microservice name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Service description"
+          },
+          "owner_dev_name": {
+            "type": "string",
+            "description": "Developer/team owner"
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version"
+          },
+          "api_type": {
+            "type": "string",
+            "enum": [
+              "Admin",
+              "Portal",
+              "Webhook",
+              "Integraciones"
+            ],
+            "description": "API type classification"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "deprecated"
+            ],
+            "description": "Service status"
+          },
+          "spec_filename": {
+            "type": "string",
+            "description": "JSON specification filename"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated tags"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "description",
+          "owner_dev_name",
+          "version",
+          "api_type",
+          "status",
+          "spec_filename",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "MicroserviceUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique microservice name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Service description"
+          },
+          "owner_dev_name": {
+            "type": "string",
+            "description": "Developer/team owner"
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version"
+          },
+          "api_type": {
+            "type": "string",
+            "enum": [
+              "Admin",
+              "Portal",
+              "Webhook",
+              "Integraciones"
+            ],
+            "description": "API type classification"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "deprecated"
+            ],
+            "description": "Service status"
+          },
+          "tags": {
+            "type": "string",
+            "description": "Comma-separated tags"
+          }
+        }
+      },
+      "MicroservicesResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "Operation success status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Response message"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Microservice"
+            },
+            "description": "List of microservices"
+          }
+        },
+        "required": [
+          "ok",
+          "message",
+          "data"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Microservices",
+      "description": "Operations related to microservice management"
+    },
+    {
+      "name": "Specifications",
+      "description": "Operations related to specification files"
+    },
+    {
+      "name": "Health",
+      "description": "Health check operations"
+    }
+  ]
+}

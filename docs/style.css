@@ -4949,6 +4949,72 @@ body.dark-mode .retry-button.simple:hover {
     background: #dc2626;
 }
 
+/* Multipart form field styles */
+.multipart-field {
+    background: linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%);
+    border-left: 3px solid #28a745;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin: 2px 0;
+}
+
+body.dark-mode .multipart-field {
+    background: linear-gradient(90deg, #2d3748 0%, #374151 100%);
+    border-left-color: #48bb78;
+}
+
+.parameter-type.multipart-file {
+    background: #e8f5e8;
+    color: #2d5016;
+    border: 1px solid #4caf50;
+    font-weight: bold;
+}
+
+body.dark-mode .parameter-type.multipart-file {
+    background: #1a2f1a;
+    color: #81c784;
+    border-color: #66bb6a;
+}
+
+.parameter-type.multipart-enum {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+}
+
+body.dark-mode .parameter-type.multipart-enum {
+    background: #2d2314;
+    color: #ffd54f;
+    border-color: #ffb300;
+}
+
+.parameter-type.multipart-string {
+    background: #e3f2fd;
+    color: #0d47a1;
+    border: 1px solid #2196f3;
+}
+
+body.dark-mode .parameter-type.multipart-string {
+    background: #0d1b2a;
+    color: #90caf9;
+    border-color: #1976d2;
+}
+
+.file-badge {
+    background: #4caf50;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+body.dark-mode .file-badge {
+    background: #66bb6a;
+    color: #1b5e20;
+}
+
 /* Mobile responsive for loading/error screens */
 @media (max-width: 768px) {
     .loading-text {

@@ -420,18 +420,75 @@ class APIDocGenerator {
 
         // Body (solo para POST/PUT/PATCH con requestBody)
         let bodyInput = null;
+        let formFields = [];
+        
         if (operation.requestBody && ['post','put','patch'].includes(method.toLowerCase())) {
-            const bodyDiv = document.createElement('div');
-            bodyDiv.style.marginBottom = '8px';
-            bodyDiv.innerHTML = `<label style="font-weight:bold">Body (JSON)</label><br>`;
-            bodyInput = document.createElement('textarea');
-            bodyInput.name = 'body';
-            bodyInput.rows = 5;
-            bodyInput.style.width = '100%';
-            bodyInput.placeholder = '{\n  "key": "value"\n}';
-            bodyInput.className = 'swagger-input';
-            bodyDiv.appendChild(bodyInput);
-            interactiveForm.appendChild(bodyDiv);
+            // Detectar tipo de contenido
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            const isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            
+            if (isMultipartForm) {
+                // Generar campos de formulario multipart
+                const formDiv = document.createElement('div');
+                formDiv.style.marginBottom = '8px';
+                formDiv.innerHTML = `<label style="font-weight:bold">Campos del Formulario</label><br>`;
+                
+                const schema = operation.requestBody.content['multipart/form-data']?.schema;
+                if (schema && schema.properties) {
+                    Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                        const fieldDiv = document.createElement('div');
+                        fieldDiv.style.marginBottom = '8px';
+                        
+                        const isRequired = schema.required?.includes(fieldName);
+                        const isFile = fieldSchema.format === 'binary';
+                        const hasEnum = fieldSchema.enum && fieldSchema.enum.length > 0;
+                        
+                        fieldDiv.innerHTML = `<label style="font-weight:bold">${fieldName}${isRequired ? ' *' : ''}</label><br>`;
+                        
+                        let input;
+                        if (isFile) {
+                            input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = '.json,.txt,.pdf,.doc,.docx,.png,.jpg,.jpeg';
+                        } else if (hasEnum) {
+                            input = document.createElement('select');
+                            fieldSchema.enum.forEach(option => {
+                                const optionElement = document.createElement('option');
+                                optionElement.value = option;
+                                optionElement.textContent = option;
+                                input.appendChild(optionElement);
+                            });
+                        } else {
+                            input = document.createElement('input');
+                            input.type = 'text';
+                        }
+                        
+                        input.name = fieldName;
+                        input.required = isRequired;
+                        input.className = 'swagger-input';
+                        input.placeholder = fieldSchema.description || '';
+                        fieldDiv.appendChild(input);
+                        formDiv.appendChild(fieldDiv);
+                        
+                        formFields.push({ input, fieldName, isFile, fieldSchema });
+                    });
+                }
+                
+                interactiveForm.appendChild(formDiv);
+            } else {
+                // Formulario JSON tradicional
+                const bodyDiv = document.createElement('div');
+                bodyDiv.style.marginBottom = '8px';
+                bodyDiv.innerHTML = `<label style="font-weight:bold">Body (JSON)</label><br>`;
+                bodyInput = document.createElement('textarea');
+                bodyInput.name = 'body';
+                bodyInput.rows = 5;
+                bodyInput.style.width = '100%';
+                bodyInput.placeholder = '{\n  "key": "value"\n}';
+                bodyInput.className = 'swagger-input';
+                bodyDiv.appendChild(bodyInput);
+                interactiveForm.appendChild(bodyDiv);
+            }
         }
 
         // Botón para enviar
@@ -490,13 +547,32 @@ class APIDocGenerator {
             url = url.replace(/{([^}]+)}/g, (_, key) => pathParams[key] || `{${key}}`);
             if (queryParams.length) url += '?' + queryParams.join('&');
 
+            // Detectar si es multipart
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            const isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            
             const fetchOptions = {
                 method: method.toUpperCase(),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: {}
             };
-            if (bodyInput && bodyInput.value) {
+            
+            if (isMultipartForm && formFields.length > 0) {
+                // Usar FormData para multipart
+                const formData = new FormData();
+                
+                formFields.forEach(({ input, fieldName, isFile }) => {
+                    if (isFile && input.files && input.files[0]) {
+                        formData.append(fieldName, input.files[0]);
+                    } else if (!isFile && input.value) {
+                        formData.append(fieldName, input.value);
+                    }
+                });
+                
+                fetchOptions.body = formData;
+                // No establecer Content-Type para multipart, el navegador lo hace automáticamente
+            } else if (bodyInput && bodyInput.value) {
+                // JSON tradicional
+                fetchOptions.headers['Content-Type'] = 'application/json';
                 try {
                     fetchOptions.body = bodyInput.value;
                 } catch (err) {
@@ -630,9 +706,18 @@ class APIDocGenerator {
         const section = document.createElement('section');
         section.className = 'section';
         
+        // Detectar tipo de contenido
+        const contentTypes = Object.keys(requestBody?.content || {});
+        const isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+        const isJsonBody = contentTypes.some(type => type.includes('application/json'));
+        
         const title = document.createElement('h2');
         title.className = 'section-title';
-        title.textContent = 'Parámetros del Body (JSON)';
+        if (isMultipartForm) {
+            title.textContent = 'Campos del Formulario (Multipart)';
+        } else {
+            title.textContent = 'Parámetros del Body (JSON)';
+        }
         section.appendChild(title);
 
         const paramsList = document.createElement('div');
@@ -655,12 +740,21 @@ class APIDocGenerator {
         content.className = 'tree-content expanded';
         content.style.display = 'block';
         content.id = contentId;
-        content.style.display = 'block';
 
         // Obtener el schema del request body
-        const schema = requestBody?.content?.['application/json']?.schema;
+        let schema = null;
+        if (isMultipartForm) {
+            schema = requestBody?.content?.['multipart/form-data']?.schema;
+        } else if (isJsonBody) {
+            schema = requestBody?.content?.['application/json']?.schema;
+        }
+
         if (schema && schema.properties) {
-            this.generateSchemaProperties(content, schema, 1);
+            if (isMultipartForm) {
+                this.generateMultipartFormProperties(content, schema, 1);
+            } else {
+                this.generateSchemaProperties(content, schema, 1);
+            }
         }
 
         paramItem.appendChild(content);
@@ -668,6 +762,51 @@ class APIDocGenerator {
         section.appendChild(paramsList);
 
         return section;
+    }
+
+    /**
+     * Genera propiedades específicas para formularios multipart
+     */
+    generateMultipartFormProperties(container, schema, level = 1) {
+        if (!schema.properties) return;
+
+        Object.entries(schema.properties).forEach(([propName, propSchema]) => {
+            const paramDiv = document.createElement('div');
+            paramDiv.className = `parameter-item level-${level}`;
+            
+            const isRequired = schema.required?.includes(propName);
+            const isFile = propSchema.format === 'binary';
+            const hasEnum = propSchema.enum && propSchema.enum.length > 0;
+            
+            // Determinar el tipo de campo
+            let fieldType = propSchema.type || 'string';
+            let fieldIcon = '📝';
+            
+            if (isFile) {
+                fieldType = 'file';
+                fieldIcon = '📎';
+            } else if (hasEnum) {
+                fieldType = 'enum';
+                fieldIcon = '📋';
+            }
+
+            paramDiv.innerHTML = `
+                <div class="parameter-header multipart-field">
+                    <div class="parameter-info">
+                        <span class="parameter-name">${fieldIcon} ${propName}</span>
+                        <span class="parameter-type multipart-${fieldType}">${fieldType.toUpperCase()}${isRequired ? ' *' : ''}</span>
+                        ${isFile ? '<span class="file-badge">📁 Archivo</span>' : ''}
+                    </div>
+                </div>
+                <div class="parameter-description">
+                    ${propSchema.description || 'Sin descripción'}
+                    ${isFile ? '<br><small style="color: #666;">Tamaño máximo: 10MB</small>' : ''}
+                    ${hasEnum ? `<br><small style="color: #666;">Opciones: ${propSchema.enum.join(', ')}</small>` : ''}
+                </div>
+            `;
+
+            container.appendChild(paramDiv);
+        });
     }
 
     /**
