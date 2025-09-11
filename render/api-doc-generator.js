@@ -1181,11 +1181,33 @@ class APIDocGenerator {
                 curlCommand += '\n  -H "Authorization: Bearer {access_token}"';
             }
         }
-        curlCommand += '\n  -H "Content-Type: application/json"';
 
-        // Body para POST/PUT/PATCH
+        // Detectar tipo de contenido y generar body apropiado
         if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
-            curlCommand += '\n  -d @/request.json';
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            const isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            
+            if (isMultipartForm) {
+                // No agregar Content-Type header para multipart (curl lo maneja automáticamente)
+                const schema = operation.requestBody.content['multipart/form-data']?.schema;
+                if (schema && schema.properties) {
+                    // Generar campos del formulario multipart
+                    Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                        if (fieldSchema.format === 'binary') {
+                            curlCommand += `\n  -F "${fieldName}=@/path/to/file"`;
+                        } else if (fieldSchema.enum && fieldSchema.enum.length > 0) {
+                            curlCommand += `\n  -F "${fieldName}=${fieldSchema.enum[0]}"`;
+                        } else {
+                            const exampleValue = fieldSchema.type === 'string' ? `"example_${fieldName}"` : 'example_value';
+                            curlCommand += `\n  -F "${fieldName}=${exampleValue}"`;
+                        }
+                    });
+                }
+            } else {
+                // Formulario JSON tradicional
+                curlCommand += '\n  -H "Content-Type: application/json"';
+                curlCommand += '\n  -d @/request.json';
+            }
         }
 
         codeBlock.innerHTML = this.formatCodeBlock(curlCommand, 'curl');
@@ -1198,7 +1220,20 @@ class APIDocGenerator {
     generateJSExample(path, method, operation) {
         const codeBlock = document.createElement('div');
         const baseUrl = this.config.servers?.[0]?.url || 'https://api.example.com';
-        let code = `fetch('${baseUrl}${path}', {\n    method: '${method.toUpperCase()}',\n    headers: {\n        'Content-Type': 'application/json',`;
+        
+        // Detectar tipo de contenido
+        let isMultipartForm = false;
+        let schema = null;
+        if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            schema = isMultipartForm ? 
+                operation.requestBody.content['multipart/form-data']?.schema :
+                operation.requestBody.content['application/json']?.schema;
+        }
+        
+        let code = `fetch('${baseUrl}${path}', {\n    method: '${method.toUpperCase()}',\n    headers: {`;
+        
         if (this.config.security?.[0]) {
             const accessToken = this.getValidAccessToken();
             if (accessToken) {
@@ -1207,10 +1242,33 @@ class APIDocGenerator {
                 code += `\n        'Authorization': 'Bearer {access_token}',`;
             }
         }
-        code += `\n    },`;
-        if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
-            code += `\n    body: JSON.stringify({ /* datos */ }),`;
+        
+        if (isMultipartForm) {
+            code += `\n        // Content-Type será establecido automáticamente por el navegador`;
+            code += `\n    },`;
+            code += `\n    body: (() => {\n        const formData = new FormData();`;
+            
+            if (schema && schema.properties) {
+                Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                    if (fieldSchema.format === 'binary') {
+                        code += `\n        formData.append('${fieldName}', fileInput.files[0]); // File input`;
+                    } else if (fieldSchema.enum && fieldSchema.enum.length > 0) {
+                        code += `\n        formData.append('${fieldName}', '${fieldSchema.enum[0]}');`;
+                    } else {
+                        const exampleValue = fieldSchema.type === 'string' ? `example_${fieldName}` : 'example_value';
+                        code += `\n        formData.append('${fieldName}', '${exampleValue}');`;
+                    }
+                });
+            }
+            code += `\n        return formData;\n    })(),`;
+        } else {
+            code += `\n        'Content-Type': 'application/json',`;
+            code += `\n    },`;
+            if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
+                code += `\n    body: JSON.stringify({ /* datos */ }),`;
+            }
         }
+        
         code += `\n})\n.then(response => response.json())\n.then(data => console.log(data))\n.catch(error => console.error(error));`;
         codeBlock.innerHTML = this.formatCodeBlock(code, 'js');
         return codeBlock;
@@ -1221,7 +1279,20 @@ class APIDocGenerator {
      */
     generatePythonExample(path, method, operation) {
         const baseUrl = this.config.servers?.[0]?.url || 'https://api.example.com';
-        let code = `import requests\n\nurl = '${baseUrl}${path}'\nheaders = {\n    'Content-Type': 'application/json',`;
+        
+        // Detectar tipo de contenido
+        let isMultipartForm = false;
+        let schema = null;
+        if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            schema = isMultipartForm ? 
+                operation.requestBody.content['multipart/form-data']?.schema :
+                operation.requestBody.content['application/json']?.schema;
+        }
+        
+        let code = `import requests\n\nurl = '${baseUrl}${path}'\nheaders = {`;
+        
         if (this.config.security?.[0]) {
             const accessToken = this.getValidAccessToken();
             if (accessToken) {
@@ -1230,12 +1301,44 @@ class APIDocGenerator {
                 code += `\n    'Authorization': 'Bearer {access_token}',`;
             }
         }
-        code += `\n}`;
-        if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
-            code += `\ndata = { # datos }\nresponse = requests.${method.toLowerCase()}(url, headers=headers, json=data)`;
+        
+        if (isMultipartForm) {
+            code += `\n}\n\nfiles = {`;
+            let dataFields = [];
+            
+            if (schema && schema.properties) {
+                Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                    if (fieldSchema.format === 'binary') {
+                        code += `\n    '${fieldName}': open('/path/to/file', 'rb'),`;
+                    } else if (fieldSchema.enum && fieldSchema.enum.length > 0) {
+                        dataFields.push(`    '${fieldName}': '${fieldSchema.enum[0]}',`);
+                    } else {
+                        const exampleValue = fieldSchema.type === 'string' ? `example_${fieldName}` : 'example_value';
+                        dataFields.push(`    '${fieldName}': '${exampleValue}',`);
+                    }
+                });
+            }
+            
+            code += `\n}`;
+            if (dataFields.length > 0) {
+                code += `\n\ndata = {\n${dataFields.join('\n')}\n}`;
+            }
+            
+            if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
+                code += `\n\nresponse = requests.${method.toLowerCase()}(url, headers=headers, files=files${dataFields.length > 0 ? ', data=data' : ''})`;
+            } else {
+                code += `\n\nresponse = requests.${method.toLowerCase()}(url, headers=headers)`;
+            }
         } else {
-            code += `\nresponse = requests.${method.toLowerCase()}(url, headers=headers)`;
+            code += `\n    'Content-Type': 'application/json',`;
+            code += `\n}`;
+            if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
+                code += `\ndata = { # datos }\nresponse = requests.${method.toLowerCase()}(url, headers=headers, json=data)`;
+            } else {
+                code += `\nresponse = requests.${method.toLowerCase()}(url, headers=headers)`;
+            }
         }
+        
         code += `\nprint(response.json())`;
         const codeBlock = document.createElement('div');
         codeBlock.innerHTML = this.formatCodeBlock(code, 'python');
@@ -1247,14 +1350,51 @@ class APIDocGenerator {
      */
     generateGoExample(path, method, operation) {
         const baseUrl = this.config.servers?.[0]?.url || 'https://api.example.com';
-        let code = `package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io/ioutil\"\n)\n\nfunc main() {\n    url := \"${baseUrl}${path}\"\n    client := &http.Client{}\n    req, err := http.NewRequest(\"${method.toUpperCase()}\", url, nil)\n    if err != nil {\n        panic(err)\n    }\n    req.Header.Set(\"Content-Type\", \"application/json\")`;
-        if (this.config.security?.[0]) {
-            code += `\n    req.Header.Set(\"Authorization\", \"Bearer {access_token}\")`;
-        }
+        
+        // Detectar tipo de contenido
+        let isMultipartForm = false;
+        let schema = null;
         if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
-            code += `\n    data := map[string]interface{}{ /* datos */ }\n    jsonData, _ := json.Marshal(data)\n    req.Body = ioutil.NopCloser(bytes.NewBuffer(jsonData))`;
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            schema = isMultipartForm ? 
+                operation.requestBody.content['multipart/form-data']?.schema :
+                operation.requestBody.content['application/json']?.schema;
         }
+        
+        let code = `package main\n\nimport (\n    "bytes"\n    ${isMultipartForm ? '"mime/multipart"\n    "os"' : '"encoding/json"'}\n    "fmt"\n    "net/http"\n    "io/ioutil"\n)\n\nfunc main() {\n    url := "${baseUrl}${path}"\n    client := &http.Client{}\n    `;
+        
+        if (isMultipartForm) {
+            code += `var buf bytes.Buffer\n    writer := multipart.NewWriter(&buf)\n    `;
+            
+            if (schema && schema.properties) {
+                Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                    if (fieldSchema.format === 'binary') {
+                        code += `\n    // File field\n    file, err := os.Open("/path/to/file")\n    if err != nil {\n        panic(err)\n    }\n    defer file.Close()\n    fileWriter, _ := writer.CreateFormFile("${fieldName}", "filename")\n    io.Copy(fileWriter, file)`;
+                    } else if (fieldSchema.enum && fieldSchema.enum.length > 0) {
+                        code += `\n    writer.WriteField("${fieldName}", "${fieldSchema.enum[0]}")`;
+                    } else {
+                        const exampleValue = fieldSchema.type === 'string' ? `example_${fieldName}` : 'example_value';
+                        code += `\n    writer.WriteField("${fieldName}", "${exampleValue}")`;
+                    }
+                });
+            }
+            
+            code += `\n    writer.Close()\n    \n    req, err := http.NewRequest("${method.toUpperCase()}", url, &buf)\n    if err != nil {\n        panic(err)\n    }\n    req.Header.Set("Content-Type", writer.FormDataContentType())`;
+        } else {
+            code += `req, err := http.NewRequest("${method.toUpperCase()}", url, nil)\n    if err != nil {\n        panic(err)\n    }\n    req.Header.Set("Content-Type", "application/json")`;
+            
+            if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
+                code += `\n    data := map[string]interface{}{ /* datos */ }\n    jsonData, _ := json.Marshal(data)\n    req.Body = ioutil.NopCloser(bytes.NewBuffer(jsonData))`;
+            }
+        }
+        
+        if (this.config.security?.[0]) {
+            code += `\n    req.Header.Set("Authorization", "Bearer {access_token}")`;
+        }
+        
         code += `\n    resp, err := client.Do(req)\n    if err != nil {\n        panic(err)\n    }\n    defer resp.Body.Close()\n    fmt.Println(resp.Status)\n}`;
+        
         const codeBlock = document.createElement('div');
         codeBlock.innerHTML = this.formatCodeBlock(code, 'go');
         return codeBlock;
@@ -1265,15 +1405,59 @@ class APIDocGenerator {
      */
     generateNodeExample(path, method, operation) {
         const baseUrl = this.config.servers?.[0]?.url || 'https://api.example.com';
-        let code = `const axios = require('axios');\n\naxios({\n    url: '${baseUrl}${path}',\n    method: '${method.toLowerCase()}',\n    headers: {\n        'Content-Type': 'application/json',`;
-        if (this.config.security?.[0]) {
-            code += `\n        'Authorization': 'Bearer {access_token}',`;
-        }
-        code += `\n    },`;
+        
+        // Detectar tipo de contenido
+        let isMultipartForm = false;
+        let schema = null;
         if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
-            code += `\n    data: { /* datos */ },`;
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            schema = isMultipartForm ? 
+                operation.requestBody.content['multipart/form-data']?.schema :
+                operation.requestBody.content['application/json']?.schema;
         }
+        
+        let code = `const axios = require('axios');\n${isMultipartForm ? 'const FormData = require(\'form-data\');\nconst fs = require(\'fs\');\n' : ''}\n`;
+        
+        if (isMultipartForm) {
+            code += `const form = new FormData();\n`;
+            
+            if (schema && schema.properties) {
+                Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                    if (fieldSchema.format === 'binary') {
+                        code += `form.append('${fieldName}', fs.createReadStream('/path/to/file'));\n`;
+                    } else if (fieldSchema.enum && fieldSchema.enum.length > 0) {
+                        code += `form.append('${fieldName}', '${fieldSchema.enum[0]}');\n`;
+                    } else {
+                        const exampleValue = fieldSchema.type === 'string' ? `example_${fieldName}` : 'example_value';
+                        code += `form.append('${fieldName}', '${exampleValue}');\n`;
+                    }
+                });
+            }
+            
+            code += `\naxios({\n    url: '${baseUrl}${path}',\n    method: '${method.toLowerCase()}',\n    headers: {\n        ...form.getHeaders(),`;
+            
+            if (this.config.security?.[0]) {
+                code += `\n        'Authorization': 'Bearer {access_token}',`;
+            }
+            
+            code += `\n    },\n    data: form,`;
+        } else {
+            code += `axios({\n    url: '${baseUrl}${path}',\n    method: '${method.toLowerCase()}',\n    headers: {\n        'Content-Type': 'application/json',`;
+            
+            if (this.config.security?.[0]) {
+                code += `\n        'Authorization': 'Bearer {access_token}',`;
+            }
+            
+            code += `\n    },`;
+            
+            if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
+                code += `\n    data: { /* datos */ },`;
+            }
+        }
+        
         code += `\n})\n.then(response => {\n    console.log(response.data);\n})\n.catch(error => {\n    console.error(error);\n});`;
+        
         const codeBlock = document.createElement('div');
         codeBlock.innerHTML = this.formatCodeBlock(code, 'node');
         return codeBlock;
@@ -2851,11 +3035,33 @@ class APIDocGenerator {
                 curlCommand += '\n  -H "Authorization: Bearer {access_token}"';
             }
         }
-        curlCommand += '\n  -H "Content-Type: application/json"';
 
-        // Body para POST/PUT/PATCH
+        // Detectar tipo de contenido y generar body apropiado
         if (['post', 'put', 'patch'].includes(method.toLowerCase()) && operation.requestBody) {
-            curlCommand += '\n  -d @/request.json';
+            const contentTypes = Object.keys(operation.requestBody?.content || {});
+            const isMultipartForm = contentTypes.some(type => type.includes('multipart/form-data'));
+            
+            if (isMultipartForm) {
+                // No agregar Content-Type header para multipart (curl lo maneja automáticamente)
+                const schema = operation.requestBody.content['multipart/form-data']?.schema;
+                if (schema && schema.properties) {
+                    // Generar campos del formulario multipart
+                    Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
+                        if (fieldSchema.format === 'binary') {
+                            curlCommand += `\n  -F "${fieldName}=@/path/to/file"`;
+                        } else if (fieldSchema.enum && fieldSchema.enum.length > 0) {
+                            curlCommand += `\n  -F "${fieldName}=${fieldSchema.enum[0]}"`;
+                        } else {
+                            const exampleValue = fieldSchema.type === 'string' ? `"example_${fieldName}"` : 'example_value';
+                            curlCommand += `\n  -F "${fieldName}=${exampleValue}"`;
+                        }
+                    });
+                }
+            } else {
+                // Formulario JSON tradicional
+                curlCommand += '\n  -H "Content-Type: application/json"';
+                curlCommand += '\n  -d @/request.json';
+            }
         }
 
         return this.formatCodeBlock(curlCommand, 'curl');
