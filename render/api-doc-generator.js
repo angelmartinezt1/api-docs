@@ -563,13 +563,14 @@ class APIDocGenerator {
         const toggle = document.createElement('div');
         toggle.className = 'tree-toggle expanded';
         toggle.innerHTML = `
-            <span class="toggle-icon">+</span>
-            <span class="toggle-text">Mostrar propiedades</span>
+            <span class="toggle-icon">−</span>
+            <span class="toggle-text">Ocultar propiedades</span>
         `;
         paramItem.appendChild(toggle);
 
         const content = document.createElement('div');
         content.className = 'tree-content expanded';
+        content.style.display = 'block';
 
         parameters.forEach(param => {
             const paramDiv = document.createElement('div');
@@ -633,6 +634,7 @@ class APIDocGenerator {
 
         const content = document.createElement('div');
         content.className = 'tree-content expanded';
+        content.style.display = 'block';
         content.id = contentId;
         content.style.display = 'block';
 
