@@ -473,54 +473,6 @@ async function loadFromJSON(jsonFile) {
     }
 }
 
-// Función para cargar desde URL (nueva función dinámica)
-async function loadFromURL(specUrl) {
-    try {
-        console.log('Loading documentation from URL:', specUrl);
-        
-        const response = await fetch(specUrl);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const config = await response.json();
-        
-        // Store config globally for search functionality
-        window.currentConfig = config;
-        
-        // Update document title if available
-        if (config.info && config.info.title) {
-            document.title = `${config.info.title} - API Documentation`;
-        }
-        
-        generator.generateFromJSON(config);
-        
-        // Reload search endpoints after documentation is generated
-        setTimeout(() => {
-            loadSearchEndpoints();
-        }, 500);
-        
-        console.log('Documentation loaded successfully from URL');
-    } catch (error) {
-        console.error('Error loading spec from URL:', error);
-        
-        // Show error in the main content area
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.innerHTML = `
-                <div class="error-state" style="padding: 2rem; text-align: center;">
-                    <h2 style="color: #e74c3c; margin-bottom: 1rem;">Error Loading Documentation</h2>
-                    <p style="color: #6c757d; margin-bottom: 1rem;">Failed to load API specification from: <code>${specUrl}</code></p>
-                    <p style="color: #6c757d;">${error.message}</p>
-                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Try Again
-                    </button>
-                </div>
-            `;
-        }
-    }
-}
-
 // Función para cargar desde YAML
 async function loadFromYAML(yamlFile) {
     try {

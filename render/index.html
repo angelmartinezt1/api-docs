@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Implementación del Generador de Documentación</title>
-    <!-- Incluir los estilos CSS de tu plantilla original aquí -->
+    <!-- Incluir los estilos CSS de tu plantilla original aquí - V1-->
     <link rel="stylesheet" href="style.css">
     <!-- Highlight.js CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light">
@@ -24,12 +24,139 @@
     
     <!-- Script para cargar y generar la documentación -->
     <script>
-      // Cargar la documentación al iniciar la página
+        // Loading and error management functions
+        function showLoading(message = 'Cargando documentación...', submessage = 'Obteniendo especificación de la API') {
+            document.getElementById('loadingScreen').style.display = 'flex';
+            document.getElementById('errorScreen').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'none';
+            document.querySelector('.loading-text').textContent = message;
+            document.getElementById('loadingSubtext').textContent = submessage;
+        }
+        
+        function showError(message, details = '', isSimple = false) {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('errorScreen').style.display = 'flex';
+            document.getElementById('mainContainer').style.display = 'none';
+            
+            const errorScreen = document.getElementById('errorScreen');
+            const errorContent = document.querySelector('.error-content');
+            const errorIcon = document.querySelector('.error-icon');
+            const errorTitle = document.querySelector('.error-title');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorDetails = document.getElementById('errorDetails');
+            const retryButton = document.getElementById('retryButton');
+            
+            if (isSimple) {
+                // Add simple classes for minimalist display
+                errorScreen.classList.add('simple');
+                errorContent.classList.add('simple');
+                errorTitle.classList.add('simple');
+                errorMessage.classList.add('simple');
+                retryButton.classList.add('simple');
+                
+                // Hide icon and details for simple display
+                errorIcon.style.display = 'none';
+                errorDetails.style.display = 'none';
+                
+                // Update content
+                errorTitle.textContent = 'Error de JSON';
+                errorMessage.textContent = message;
+            } else {
+                // Remove simple classes for full display
+                errorScreen.classList.remove('simple');
+                errorContent.classList.remove('simple');
+                errorTitle.classList.remove('simple');
+                errorMessage.classList.remove('simple');
+                retryButton.classList.remove('simple');
+                
+                // Show icon and details for full display
+                errorIcon.style.display = 'block';
+                errorDetails.style.display = 'block';
+                
+                // Update content
+                errorTitle.textContent = 'Error al cargar la documentación';
+                errorMessage.textContent = message;
+                errorDetails.textContent = details;
+            }
+        }
+        
+        function showContent() {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('errorScreen').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'block';
+        }
+        
+        // Enhanced loadFromJSON with loading states
+        async function loadFromJSONWithStates(jsonFile) {
+            try {
+                showLoading('Cargando documentación...', `Descargando: ${jsonFile}`);
+                
+                const response = await fetch(jsonFile);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                showLoading('Procesando especificación...', 'Parseando contenido JSON');
+                const config = await response.json();
+                
+                // Store config globally for search functionality
+                window.currentConfig = config;
+                
+                showLoading('Generando documentación...', 'Construyendo interfaz');
+                generator.generateFromJSON(config);
+                
+                // Wait for generation to complete
+                setTimeout(() => {
+                    showContent();
+                    
+                    // Reload search endpoints after documentation is generated
+                    setTimeout(() => {
+                        loadSearchEndpoints();
+                    }, 500);
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error loading JSON config:', error);
+                
+                let errorMessage = 'No se pudo cargar la especificación de la API';
+                let errorDetails = '';
+                
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    errorMessage = 'No se pudo conectar con el servidor';
+                    errorDetails = `URL: ${jsonFile}\nVerifica que la URL sea correcta y que el servidor esté disponible.`;
+                } else if (error.message.includes('HTTP')) {
+                    errorMessage = `Error del servidor: ${error.message}`;
+                    errorDetails = `URL: ${jsonFile}\nEl archivo no se encontró o no está disponible.`;
+                } else if (error instanceof SyntaxError) {
+                    // Use simple display for JSON validation errors
+                    const simpleMessage = `El archivo no contiene JSON válido\n${error.message}`;
+                    showError(simpleMessage, '', true);
+                    return; // Exit early to avoid the regular showError call
+                } else {
+                    errorMessage = 'Error inesperado al cargar la documentación';
+                    errorDetails = `${error.name}: ${error.message}`;
+                }
+                
+                showError(errorMessage, errorDetails);
+            }
+        }
+        
+        // Cargar la documentación al iniciar la página
         document.addEventListener('DOMContentLoaded', function() {
-            // Opción 1: Cargar desde archivo JSON
-             loadFromJSON('api-config.json');
-            // Opción 2: Cargar desde archivo YAML
-            // loadFromYAML('api-config.yaml');
+            // Check for spec parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const specUrl = urlParams.get('spec');
+            
+            if (specUrl) {
+                console.log('Loading spec from URL:', specUrl);
+                // Load from external URL with loading states
+                loadFromJSONWithStates(specUrl);
+            } else {
+                // Fallback: Load from local file
+                console.log('Loading local api-config.json');
+                loadFromJSONWithStates('api-config.json');
+            }
             
             // Initialize search modal
             initializeSearchModal();
@@ -177,7 +304,37 @@
         </div>
     </div>
 
-    <div class="container">
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="30" fill="none" viewBox="0 0 28 26" class="loading-logo-svg">
+                    <path fill="#D93A26" d="M18.69 10.828h2.766c.105 0 .175 0 .245.07V24.62c0 .595.56 1.015 1.155.84 1.296-.525 2.976-1.19 4.201-1.75.21-.105.49-.21.49-.63V2.496a.867.867 0 0 0-.875-.875h-2.065c-.385 0-.7.245-.84.595-.84 2.346-2.45 4.096-4.866 4.516-.105 0-.21.035-.35.035-.455.07-.77.42-.77.875v2.275c0 .49.385.876.875.876z"></path>
+                    <path fill="#D93A26" d="M22.331.71c-.105-.105-.28-.21-.455-.21H1.608C.978.5.452.955.452 1.55v3.08c0 .736.14 1.086 1.05 1.086H8.26c.175 0 .315.14.315.315v17.013c0 .315.21.56.525.7.595.245 2.66 1.26 3.36 1.645s1.926-.28 1.926-1.26V6.38c-.035-.245 0-.49.245-.595h2.38c4.83-.455 5.321-4.2 5.356-4.62V.99c0-.105 0-.175-.105-.245z"></path>
+                </svg>
+            </div>
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+            </div>
+            <div class="loading-text">Cargando documentación...</div>
+            <div class="loading-subtext" id="loadingSubtext">Obteniendo especificación de la API</div>
+        </div>
+    </div>
+
+    <!-- Error Screen -->
+    <div class="error-screen" id="errorScreen" style="display: none;">
+        <div class="error-content">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Error al cargar la documentación</div>
+            <div class="error-message" id="errorMessage">No se pudo cargar la especificación de la API.</div>
+            <div class="error-details" id="errorDetails"></div>
+            <button class="retry-button" id="retryButton" onclick="location.reload()">
+                🔄 Intentar de nuevo
+            </button>
+        </div>
+    </div>
+
+    <div class="container" id="mainContainer" style="display: none;">
         <div class="sidebar">
             <!-- Sidebar se generará automáticamente -->
         </div>
