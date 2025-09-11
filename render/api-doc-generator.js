@@ -471,8 +471,8 @@ class APIDocGenerator {
                 </svg>
                 <span class="api-title">${this.config.info.title || 'dev docs'}</span>
                 <button id="export-llm-btn" class="export-ai-btn" style="margin-left:18px;padding:6px 14px;border-radius:5px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;font-weight:bold;cursor:pointer;font-size:1em;">
-                    <span class="export-btn-text">Exportar para IA</span>
-                    <span class="export-btn-icon" style="display: none;">📋</span>
+                    <span class="export-btn-text">Descargar</span>
+                    <span class="export-btn-icon" style="display: none;">⬇️</span>
                 </button>
             `;
         }
@@ -487,30 +487,43 @@ class APIDocGenerator {
             const btn = document.getElementById('export-llm-btn');
             if (btn) {
                 btn.addEventListener('click', () => {
-                    let docText = '';
                     try {
                         // Exportar como JSON legible para LLM
-                        docText = JSON.stringify(this.config, null, 2);
-                    } catch (err) {
-                        docText = 'Error al exportar la documentación.';
-                    }
-                    // Copiar al portapapeles
-                    navigator.clipboard.writeText(docText).then(() => {
+                        const docText = JSON.stringify(this.config, null, 2);
+                        
+                        // Crear archivo para descarga
+                        const blob = new Blob([docText], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${(this.config.info?.title || 'API_Documentation').replace(/\s+/g, '_')}_for_AI.json`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                        
                         const textSpan = btn.querySelector('.export-btn-text');
                         const iconSpan = btn.querySelector('.export-btn-icon');
                         
-                        // Mostrar "Copiado ✓" temporalmente
-                        if (textSpan) textSpan.textContent = 'Copiado ✓';
+                        // Mostrar "Descargado ✓" temporalmente
+                        if (textSpan) textSpan.textContent = 'Descargado ✓';
                         if (iconSpan) iconSpan.textContent = '✓';
                         btn.style.background = '#16a34a';
                         
                         setTimeout(() => {
                             // Restaurar contenido original
-                            if (textSpan) textSpan.textContent = 'Exportar para IA';
-                            if (iconSpan) iconSpan.textContent = '📋';
+                            if (textSpan) textSpan.textContent = 'Descargar';
+                            if (iconSpan) iconSpan.textContent = '⬇️';
                             btn.style.background = '#2563eb';
                         }, 1200);
-                    });
+                        
+                        console.log('✅ Documentación para IA descargada:', link.download);
+                        
+                    } catch (err) {
+                        console.error('Error al exportar la documentación:', err);
+                        alert('Error al exportar la documentación para IA');
+                    }
                 });
             }
         }, 200);

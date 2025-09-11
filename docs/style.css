@@ -5015,6 +5015,24 @@ body.dark-mode .file-badge {
     color: #1b5e20;
 }
 
+/* Responsive export button for mobile */
+@media (max-width: 768px) {
+    .export-ai-btn .export-btn-text {
+        display: none;
+    }
+    
+    .export-ai-btn .export-btn-icon {
+        display: inline-block !important;
+        font-size: 18px;
+    }
+    
+    .export-ai-btn {
+        min-width: 40px !important;
+        padding: 8px 12px !important;
+        margin-left: 10px !important;
+    }
+}
+
 /* Mobile responsive for loading/error screens */
 @media (max-width: 768px) {
     .loading-text {
