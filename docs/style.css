@@ -4761,7 +4761,7 @@ body.dark-mode .loading-subtext {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9999;
+    z-index: 99999;
 }
 
 body.dark-mode .error-screen {
@@ -4848,11 +4848,37 @@ body.dark-mode .retry-button:hover {
 
 /* Simple error styles for JSON validation errors */
 .error-screen.simple {
-    background: rgba(0, 0, 0, 0.05);
+    background: #fff;
 }
 
 body.dark-mode .error-screen.simple {
-    background: rgba(0, 0, 0, 0.3);
+    background: #4c4c4c;
+}
+
+/* Ensure error screen covers everything */
+.error-screen {
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+}
+
+/* Hide all other elements when error screen is visible */
+.error-screen + .header,
+.error-screen ~ .header,
+.error-screen + .ai-assistant-widget,
+.error-screen ~ .ai-assistant-widget,
+.error-screen + .search-modal,
+.error-screen ~ .search-modal,
+.error-screen + .main-container,
+.error-screen ~ .main-container,
+.error-screen + .mainContainer,
+.error-screen ~ .mainContainer {
+    display: none !important;
+}
+
+body:has(.error-screen[style*="flex"]) .header,
+body:has(.error-screen[style*="flex"]) .ai-assistant-widget,
+body:has(.error-screen[style*="flex"]) .search-modal {
+    display: none !important;
 }
 
 .error-content.simple {
