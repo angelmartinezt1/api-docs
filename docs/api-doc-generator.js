@@ -18,6 +18,68 @@ class APIDocGenerator {
     }
 
     /**
+     * Genera un JSON de ejemplo basado en el schema
+     */
+    generateExampleJSON(schema) {
+        if (!schema) return '{\n  "key": "value"\n}';
+        
+        const generateValue = (propSchema) => {
+            if (propSchema.example !== undefined) {
+                return propSchema.example;
+            }
+            
+            if (propSchema.enum && propSchema.enum.length > 0) {
+                return propSchema.enum[0];
+            }
+            
+            switch (propSchema.type) {
+                case 'string':
+                    if (propSchema.format === 'email') return 'user@example.com';
+                    if (propSchema.format === 'date') return '2023-12-01';
+                    if (propSchema.format === 'date-time') return '2023-12-01T10:00:00Z';
+                    if (propSchema.format === 'uuid') return '123e4567-e89b-12d3-a456-426614174000';
+                    return propSchema.title || propSchema.description || 'string_value';
+                case 'number':
+                case 'integer':
+                    return 123;
+                case 'boolean':
+                    return true;
+                case 'array':
+                    if (propSchema.items) {
+                        return [generateValue(propSchema.items)];
+                    }
+                    return [];
+                case 'object':
+                    if (propSchema.properties) {
+                        const obj = {};
+                        Object.entries(propSchema.properties).forEach(([key, value]) => {
+                            obj[key] = generateValue(value);
+                        });
+                        return obj;
+                    }
+                    return {};
+                default:
+                    return 'value';
+            }
+        };
+        
+        let exampleObj = {};
+        
+        if (schema.properties) {
+            Object.entries(schema.properties).forEach(([key, propSchema]) => {
+                exampleObj[key] = generateValue(propSchema);
+            });
+        } else if (schema.type === 'object') {
+            exampleObj = generateValue(schema);
+        } else {
+            // Si no es un objeto, devolver ejemplo simple
+            return '{\n  "key": "value"\n}';
+        }
+        
+        return JSON.stringify(exampleObj, null, 2);
+    }
+
+    /**
      * Genera una colección de Postman desde la configuración de la API
      */
     generatePostmanCollection() {
@@ -1028,7 +1090,12 @@ class APIDocGenerator {
                 bodyInput.name = 'body';
                 bodyInput.rows = 5;
                 bodyInput.style.width = '100%';
-                bodyInput.placeholder = '{\n  "key": "value"\n}';
+                
+                // Generar ejemplo JSON basado en el schema
+                const applicationJsonContent = operation.requestBody.content['application/json'];
+                const schema = applicationJsonContent?.schema;
+                bodyInput.placeholder = this.generateExampleJSON(schema);
+                
                 bodyInput.className = 'swagger-input';
                 bodyDiv.appendChild(bodyInput);
                 interactiveForm.appendChild(bodyDiv);
