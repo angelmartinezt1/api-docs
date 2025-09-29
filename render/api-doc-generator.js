@@ -1208,9 +1208,13 @@ class APIDocGenerator {
             const startTime = performance.now();
             try {
                 const res = await fetch(url, fetchOptions);
+                // Medir el tiempo inmediatamente después de recibir la respuesta (solo headers)
                 const endTime = performance.now();
-                const elapsed = (endTime - startTime).toFixed(2);
                 const text = await res.text();
+
+                // Calcular tiempo solo hasta recibir headers
+                const elapsed = (endTime - startTime).toFixed(2);
+
                 let json;
                 let output = '';
                 // Mostrar código y tiempo en barra superior
