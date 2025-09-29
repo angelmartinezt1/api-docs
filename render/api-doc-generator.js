@@ -2587,41 +2587,28 @@ class APIDocGenerator {
             method: endpoint.method,
             url: endpoint.url,
             corsEnabled: false,
-            allowedOrigins: [],
-            allowedMethods: [],
-            allowedHeaders: [],
+            statusCode: null,
+            accessible: false,
             error: null
         };
 
         try {
-            // Realizar petición OPTIONS para verificar CORS
+            // Realizar petición para verificar conectividad
             const response = await fetch(endpoint.url, {
-                method: 'OPTIONS',
+                method: endpoint.method === 'GET' ? 'GET' : 'OPTIONS',
                 headers: {
-                    'Origin': window.location.origin,
-                    'Access-Control-Request-Method': endpoint.method,
-                    'Access-Control-Request-Headers': 'Content-Type, Authorization'
+                    'Content-Type': 'application/json'
                 }
             });
 
-            // Verificar headers CORS
-            const corsHeaders = {
-                origin: response.headers.get('Access-Control-Allow-Origin'),
-                methods: response.headers.get('Access-Control-Allow-Methods'),
-                headers: response.headers.get('Access-Control-Allow-Headers'),
-                credentials: response.headers.get('Access-Control-Allow-Credentials')
-            };
-
-            if (corsHeaders.origin) {
-                result.corsEnabled = true;
-                result.allowedOrigins = corsHeaders.origin === '*' ? ['*'] : [corsHeaders.origin];
-                result.allowedMethods = corsHeaders.methods ? corsHeaders.methods.split(',').map(m => m.trim()) : [];
-                result.allowedHeaders = corsHeaders.headers ? corsHeaders.headers.split(',').map(h => h.trim()) : [];
-                result.allowCredentials = corsHeaders.credentials === 'true';
-            }
+            result.statusCode = response.status;
+            // 401/403 indican que el endpoint existe y es accesible, solo requiere autenticación
+            result.accessible = response.ok || response.status === 401 || response.status === 403 || response.status < 500;
+            result.corsEnabled = result.accessible; // Si es accesible, CORS funciona
 
         } catch (error) {
             result.error = error.message;
+            result.accessible = false;
         }
 
         return result;
@@ -2636,7 +2623,7 @@ class APIDocGenerator {
 
         // Estadísticas generales
         const totalEndpoints = results.length;
-        const corsEnabledCount = results.filter(r => r.corsEnabled).length;
+        const accessibleCount = results.filter(r => r.accessible).length;
         const errorCount = results.filter(r => r.error).length;
 
         const statsDiv = document.createElement('div');
@@ -2651,8 +2638,8 @@ class APIDocGenerator {
                     <span class="stat-label">Total Endpoints</span>
                 </div>
                 <div class="stat-item success">
-                    <span class="stat-number">${corsEnabledCount}</span>
-                    <span class="stat-label">CORS Habilitado</span>
+                    <span class="stat-number">${accessibleCount}</span>
+                    <span class="stat-label">Accesibles</span>
                 </div>
                 <div class="stat-item error">
                     <span class="stat-number">${errorCount}</span>
@@ -2668,26 +2655,23 @@ class APIDocGenerator {
 
         results.forEach(result => {
             const itemDiv = document.createElement('div');
-            itemDiv.className = `cors-item ${result.corsEnabled ? 'cors-enabled' : 'cors-disabled'}`;
-            
-            let statusIcon = result.error ? '❌' : (result.corsEnabled ? '✅' : '⚠️');
-            let statusText = result.error ? 'Error' : (result.corsEnabled ? 'CORS Habilitado' : 'CORS Deshabilitado');
-            
+            itemDiv.className = `cors-item ${result.accessible ? 'cors-enabled' : 'cors-disabled'}`;
+
+            let statusIcon = result.error ? '❌' : (result.accessible ? '✅' : '⚠️');
+            let statusText = result.error ? 'Error' : (result.accessible ? 'Accesible' : 'No accesible');
+
             itemDiv.innerHTML = `
                 <div class="cors-item-header">
                     <span class="cors-status">${statusIcon} ${statusText}</span>
                     <span class="cors-endpoint">${result.method} ${result.path}</span>
                 </div>
                 <div class="cors-item-details">
-                    ${result.corsEnabled ? `
+                    ${result.statusCode !== null ? `
                         <div class="cors-detail">
-                            <strong>Orígenes permitidos:</strong> ${result.allowedOrigins.join(', ') || 'No especificado'}
+                            <strong>Código HTTP:</strong> ${result.statusCode}
                         </div>
                         <div class="cors-detail">
-                            <strong>Métodos permitidos:</strong> ${result.allowedMethods.join(', ') || 'No especificado'}
-                        </div>
-                        <div class="cors-detail">
-                            <strong>Headers permitidos:</strong> ${result.allowedHeaders.join(', ') || 'No especificado'}
+                            <strong>URL:</strong> ${result.url}
                         </div>
                     ` : ''}
                     ${result.error ? `
@@ -2697,7 +2681,7 @@ class APIDocGenerator {
                     ` : ''}
                 </div>
             `;
-            
+
             detailsDiv.appendChild(itemDiv);
         });
 
