@@ -4701,6 +4701,9 @@ body.dark-mode .loading-content {
 .loading-spinner {
     margin: 0 auto 32px;
     position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .spinner {

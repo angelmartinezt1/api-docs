@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 
 const stage = process.env.SST_STAGE || 'dev';
 // Para desarrollo local, mantener API local
-let apiBaseUrl = process.env.API_URL || '/api';
+let apiBaseUrl = 'https://3we0wv453m.execute-api.us-east-1.amazonaws.com/dev';
 
 // For Lambda deployment, add /api prefix to the base URL
 if (process.env.API_URL && process.env.API_URL.includes('lambda-url')) {
